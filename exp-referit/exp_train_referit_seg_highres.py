@@ -35,7 +35,7 @@ lr_decay_step = 6000
 lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
-max_iter = 18000
+max_iter = 100 #18000
 
 fix_convnet = False
 vgg_dropout = False
@@ -99,7 +99,7 @@ print('Done.')
 # Loss function and accuracy
 ################################################################################
 
-cls_loss = loss.weighed_logistic_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
+cls_loss = loss.multiclass_entropy_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
 reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
 total_loss = cls_loss + reg_loss
 

@@ -19,3 +19,10 @@ def l2_regularization_loss(variables, weight_decay):
     l2_losses = [tf.nn.l2_loss(var) for var in variables]
     total_l2_loss = weight_decay * tf.add_n(l2_losses)
     return total_l2_loss
+
+
+def multiclass_entropy_loss(scores, labels, pos_loss_mult=1.0, neg_loss_mult=1.0):
+        # Classification loss as the average of weighed per-score loss
+        cls_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=scores, labels=labels))
+        print("\n Multiclass loss used! \n")
+        return cls_loss
