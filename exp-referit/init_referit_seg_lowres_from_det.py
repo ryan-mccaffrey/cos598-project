@@ -2,13 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 
-from models import text_objseg_model as segmodel
+from models import text_objseg_model as segmodel                 
+                    
+## Segmentation Network - Initialization
 
 ################################################################################
 # Parameters
 ################################################################################
 
-det_model = './exp-referit/tfmodel/referit_fc8_det_iter_250.tfmodel'
+det_model = './exp-referit/tfmodel/referit_fc8_det_iter_0.tfmodel'
 seg_model = './exp-referit/tfmodel/referit_fc8_seg_lowres_init.tfmodel'
 
 # Model Params

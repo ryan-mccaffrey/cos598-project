@@ -22,7 +22,12 @@ def l2_regularization_loss(variables, weight_decay):
 
 
 def multiclass_entropy_loss(scores, labels, pos_loss_mult=1.0, neg_loss_mult=1.0):
+        # Apply different weights to loss of positive samples and negative samples
+        # positive samples have label 1 while negative samples have label 0
+        loss_mult = tf.add(tf.multiply(labels, pos_loss_mult-neg_loss_mult), neg_loss_mult)
+        print("\n Multiclass loss! \n")
         # Classification loss as the average of weighed per-score loss
-        cls_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=scores, labels=labels))
-        print("\n Multiclass loss used! \n")
+        softmax = tf.nn.softmax_cross_entropy_with_logits(logits=scores, labels=labels)
+        softmax = tf.reshape(softmax, loss_mult.get_shape())
+        cls_loss = tf.reduce_mean(tf.multiply(softmax, loss_mult))
         return cls_loss

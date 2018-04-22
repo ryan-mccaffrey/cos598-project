@@ -35,7 +35,7 @@ lr_decay_step = 6000
 lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
-max_iter = 100 #18000
+max_iter = 18000
 
 fix_convnet = False
 vgg_dropout = False

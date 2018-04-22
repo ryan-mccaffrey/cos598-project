@@ -8,7 +8,7 @@ from models import text_objseg_model as segmodel
 # Parameters
 ################################################################################
 
-lowres_model = './exp-referit/tfmodel/referit_fc8_seg_lowres_iter_100.tfmodel'#30000.tfmodel'
+lowres_model = './exp-referit/tfmodel/referit_fc8_seg_lowres_iter_1000.tfmodel'#30000.tfmodel'
 highres_model = './exp-referit/tfmodel/referit_fc8_seg_highres_init.tfmodel'
 
 # Model Params
