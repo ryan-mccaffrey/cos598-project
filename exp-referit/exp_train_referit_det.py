@@ -35,7 +35,7 @@ lr_decay_step = 10000
 lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
-max_iter = 25000
+max_iter = 250 #25000
 
 fix_convnet = True
 vgg_dropout = False
@@ -98,9 +98,9 @@ print('Done.')
 
 ################################################################################
 # Loss function and accuracy
-################################################################################
+###############################################################################
 
-cls_loss = loss.weighed_logistic_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
+cls_loss = loss.multiclass_entropy_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
 reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
 total_loss = cls_loss + reg_loss
 
@@ -143,7 +143,7 @@ convnet_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2',
                   'conv3_1', 'conv3_2', 'conv3_3',
                   'conv4_1', 'conv4_2', 'conv4_3',
                   'conv5_1', 'conv5_2', 'conv5_3', 'fc6', 'fc7', 'fc8']
-processed_params = np.load(convnet_params)
+processed_params = np.load(convnet_params, encoding="latin1")
 processed_W = processed_params['processed_W'][()]
 processed_B = processed_params['processed_B'][()]
 with tf.variable_scope('vgg_local', reuse=True):
@@ -156,10 +156,12 @@ with tf.variable_scope('vgg_local', reuse=True):
 with tf.variable_scope('classifier', reuse=True):
     mlp_l1 = tf.get_variable('mlp_l1/weights')
     mlp_l2 = tf.get_variable('mlp_l2/weights')
+    print(mlp_l1.get_shape())
     init_mlp_l1 = tf.assign(mlp_l1, np.random.normal(
         0, mlp_l1_std, mlp_l1.get_shape().as_list()).astype(np.float32))
     init_mlp_l2 = tf.assign(mlp_l2, np.random.normal(
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
+    print(mlp_l2.get_shape())
 
 init_ops += [init_mlp_l1, init_mlp_l2]
 processed_params.close()
@@ -173,7 +175,7 @@ sess = tf.Session()
 # Run Initialization operations
 sess.run(tf.global_variables_initializer())
 sess.run(tf.group(*init_ops))
-
+'''
 ################################################################################
 # Optimization loop
 ################################################################################
@@ -219,6 +221,8 @@ for n_iter in range(max_iter):
     if (n_iter+1) % snapshot == 0 or (n_iter+1) == max_iter:
         snapshot_saver.save(sess, snapshot_file % (n_iter+1))
         print('snapshot saved to ' + snapshot_file % (n_iter+1))
-
+'''
+snapshot_saver.save(sess, snapshot_file % 0)
+print('snapshot saved to ' + snapshot_file % 0)
 print('Optimization done.')
 sess.close()

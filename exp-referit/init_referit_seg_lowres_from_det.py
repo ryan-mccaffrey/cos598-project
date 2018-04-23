@@ -2,13 +2,15 @@ from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 
-from models import text_objseg_model as segmodel
+from models import text_objseg_model as segmodel                 
+                    
+## Segmentation Network - Initialization
 
 ################################################################################
 # Parameters
 ################################################################################
 
-det_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
+det_model = './exp-referit/tfmodel/referit_fc8_det_iter_0.tfmodel'
 seg_model = './exp-referit/tfmodel/referit_fc8_seg_lowres_init.tfmodel'
 
 # Model Params
@@ -45,7 +47,7 @@ with tf.Session() as sess:
 ################################################################################
 
 # Clear the graph
-tf.python.ops.reset_default_graph()
+tf.reset_default_graph()
 
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])  # one batch per sentence

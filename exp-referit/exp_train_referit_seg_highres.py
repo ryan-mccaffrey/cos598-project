@@ -99,7 +99,7 @@ print('Done.')
 # Loss function and accuracy
 ################################################################################
 
-cls_loss = loss.weighed_logistic_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
+cls_loss = loss.multiclass_entropy_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
 reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
 total_loss = cls_loss + reg_loss
 

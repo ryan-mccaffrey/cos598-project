@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 import os
 import threading
-import Queue as queue
+import queue as queue
 
 def run_prefetch(prefetch_queue, folder_name, prefix, num_batch, shuffle):
     n_batch_prefetch = 0

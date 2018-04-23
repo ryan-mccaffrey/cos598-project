@@ -45,7 +45,7 @@ vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
 training_samples = []
 num_imcrop = len(imcrop_list)
-for n_imcrop in range(num_imcrop):
+for n_imcrop in range(1000): #range(num_imcrop):
     if n_imcrop % 200 == 0: print('processing %d / %d' % (n_imcrop+1, num_imcrop))
     imcrop_name = imcrop_list[n_imcrop]
 
