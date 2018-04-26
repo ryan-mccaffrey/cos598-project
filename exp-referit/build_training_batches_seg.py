@@ -10,6 +10,10 @@ import skimage.transform
 from util import im_processing, text_processing
 from util.io import load_referit_gt_mask as load_gt_mask
 
+import sys
+sys.path.append('../coco')
+from pycocotools.coco import COCO
+
 ################################################################################
 # Parameters
 ################################################################################
@@ -19,16 +23,24 @@ mask_dir = './exp-referit/referit-dataset/mask/'
 query_file = './exp-referit/data/referit_query_trainval.json'
 imsize_file = './exp-referit/data/referit_imsize.json'
 vocab_file = './exp-referit/data/vocabulary_referit.txt'
+# annotation_file = '../coco/annotations/instances_train2017.json'
+# caption_file = '../coco/annotations/captions_train2017.json'
 
 # Saving directory
-data_folder = './exp-referit/data/train_batch_seg/'
-data_prefix = 'referit_train_seg'
+# data_folder = './exp-referit/data/train_batch_seg/'
+# data_prefix = 'referit_train_seg'
+data_folder = './coco/data/train_batch_seg/'
+data_prefix = 'coco_train_seg'
 
 # Model Params
 T = 20
 N = 10
 input_H = 512; featmap_H = (input_H // 32)
 input_W = 512; featmap_W = (input_W // 32)
+
+# setting up coco
+coco = COCO(annotation_file)
+coco_caps = COCO(caption_file)
 
 ################################################################################
 # Load annotations
@@ -39,13 +51,16 @@ imsize_dict = json.load(open(imsize_file))
 imcrop_list = query_dict.keys()
 vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
+# training_ids = coco.getImgIds()
+
 ################################################################################
 # Collect training samples
 ################################################################################
 
 training_samples = []
 num_imcrop = len(imcrop_list)
-for n_imcrop in range(1000): #range(num_imcrop):
+
+for n_imcrop in range(num_imcrop):
     if n_imcrop % 200 == 0: print('processing %d / %d' % (n_imcrop+1, num_imcrop))
     imcrop_name = imcrop_list[n_imcrop]
 

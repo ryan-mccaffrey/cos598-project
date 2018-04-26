@@ -134,6 +134,7 @@ for n_batch in range(num_batch):
     for n_sample in range(batch_begin, batch_end):
         imname, imsize, sample_bbox, description, label = shuffled_training_samples[n_sample]
         im = skimage.io.imread(image_dir + imname)
+        # NOTE: they use xmax and ymax, coco uses w and h
         xmin, ymin, xmax, ymax = sample_bbox
 
         imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
