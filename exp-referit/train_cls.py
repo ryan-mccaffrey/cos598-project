@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division, print_function
 
 import sys
@@ -17,8 +16,8 @@ from util import loss
 # Model Params
 T = 20
 N = 10
-input_H = 224
-input_W = 224
+input_H = 512; featmap_H = (input_H // 32)
+input_W = 512; featmap_W = (input_W // 32)
 num_vocab = 8803
 embed_dim = 1000
 lstm_dim = 1000
@@ -46,12 +45,12 @@ mlp_dropout = False
 vgg_lr_mult = 1.
 
 # Data Params
-data_folder = './exp-referit/data/train_batch_cls/'
-data_prefix = 'referit_train_cls'
+data_folder = './exp-referit/data/train_batch_det/'
+data_prefix = 'referit_train_det'
 
 # Snapshot Params
 snapshot = 5000
-snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
+snapshot_file = './exp-referit/tfmodel/referit_fc8_det_iter_%d.tfmodel'
 
 ################################################################################
 # The model
@@ -59,12 +58,13 @@ snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])
-imcrop_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
+imcrop_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
+spatial_batch = tf.placeholder(tf.float32, [N, 8])
 label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
-scores = segmodel.text_objseg_cls(text_seq_batch, imcrop_batch, 
-    num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
+scores = segmodel.text_objseg_region(text_seq_batch, imcrop_batch,
+    spatial_batch, num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
 ################################################################################
@@ -100,7 +100,7 @@ print('Done.')
 
 ################################################################################
 # Loss function and accuracy
-###############################################################################
+################################################################################
 
 cls_loss = loss.weighed_logistic_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
 reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
@@ -119,7 +119,6 @@ def compute_accuracy(scores, labels):
     accuracy_neg = np.sum(is_correct[is_neg]) / num_neg
     return accuracy_all, accuracy_pos, accuracy_neg
 
-print("Loss initialized.")
 ################################################################################
 # Solver
 ################################################################################
@@ -136,7 +135,6 @@ grads_and_vars = [((g if var_lr_mult[v] == 1 else tf.multiply(var_lr_mult[v], g)
 # Apply gradients
 train_step = solver.apply_gradients(grads_and_vars, global_step=global_step)
 
-print("Solver initialized.")
 ################################################################################
 # Initialize parameters and load data
 ################################################################################
@@ -147,7 +145,7 @@ convnet_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2',
                   'conv3_1', 'conv3_2', 'conv3_3',
                   'conv4_1', 'conv4_2', 'conv4_3',
                   'conv5_1', 'conv5_2', 'conv5_3', 'fc6', 'fc7', 'fc8']
-processed_params = np.load(convnet_params, encoding="latin1")
+processed_params = np.load(convnet_params, encoding='latin1')
 processed_W = processed_params['processed_W'][()]
 processed_B = processed_params['processed_B'][()]
 with tf.variable_scope('vgg_local', reuse=True):
@@ -165,13 +163,8 @@ with tf.variable_scope('classifier', reuse=True):
     init_mlp_l2 = tf.assign(mlp_l2, np.random.normal(
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
 
-    print(mlp_l1.get_shape())
-    print(mlp_l2.get_shape())
-
 init_ops += [init_mlp_l1, init_mlp_l2]
 processed_params.close()
-
-print("Parameters initialized.")
 
 # Load data
 reader = data_reader.DataReader(data_folder, data_prefix)
@@ -183,7 +176,6 @@ sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 sess.run(tf.group(*init_ops))
 
-print("Data loaded.")
 ################################################################################
 # Optimization loop
 ################################################################################
@@ -197,8 +189,9 @@ for n_iter in range(max_iter):
     # Read one batch
     batch = reader.read_batch()
     text_seq_val = batch['text_seq_batch']
-    im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
-    label_val = batch['pos_exnum_batch'].astype(np.float32).reshape(10,1)
+    imcrop_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
+    spatial_batch_val = batch['spatial_batch']
+    label_val = batch['label_batch'].astype(np.float32)
 
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
 
@@ -206,7 +199,8 @@ for n_iter in range(max_iter):
     scores_val, cls_loss_val, _, lr_val = sess.run([scores, cls_loss, train_step, learning_rate],
         feed_dict={
             text_seq_batch  : text_seq_val,
-            imcrop_batch    : im_val,
+            imcrop_batch    : imcrop_val,
+            spatial_batch   : spatial_batch_val,
             label_batch     : label_val
         })
     cls_loss_avg = decay*cls_loss_avg + (1-decay)*cls_loss_val
@@ -228,7 +222,5 @@ for n_iter in range(max_iter):
         snapshot_saver.save(sess, snapshot_file % (n_iter+1))
         print('snapshot saved to ' + snapshot_file % (n_iter+1))
 
-snapshot_saver.save(sess, snapshot_file % 0)
-print('snapshot saved to ' + snapshot_file % 0)
 print('Optimization done.')
 sess.close()

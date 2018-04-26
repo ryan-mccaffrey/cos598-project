@@ -1,3 +1,4 @@
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -21,14 +22,14 @@ imsize_file = './exp-referit/data/referit_imsize.json'
 vocab_file = './exp-referit/data/vocabulary_referit.txt'
 
 # Saving directory
-data_folder = './exp-referit/data/train_batch_cap/'
-data_prefix = 'referit_train_cap'
+data_folder = './exp-referit/data/train_batch_cls/'
+data_prefix = 'referit_train_cls'
 
 # Model Params
 T = 20
 N = 10 # number of items per batch
-input_H = 512; featmap_H = (input_H // 32)
-input_W = 512; featmap_W = (input_W // 32)
+input_H = 224
+input_W = 224
 
 # num false samples per positive sample
 F = 5
