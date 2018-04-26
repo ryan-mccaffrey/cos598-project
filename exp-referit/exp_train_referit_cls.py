@@ -35,7 +35,7 @@ lr_decay_step = 10000
 lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
-max_iter = 250 #25000
+max_iter = 25000
 
 fix_convnet = True
 vgg_dropout = False
@@ -43,12 +43,12 @@ mlp_dropout = False
 vgg_lr_mult = 1.
 
 # Data Params
-data_folder = './exp-referit/data/train_batch_det/'
-data_prefix = 'referit_train_det'
+data_folder = './exp-referit/data/train_batch_cls/'
+data_prefix = 'referit_train_cls'
 
 # Snapshot Params
 snapshot = 5000
-snapshot_file = './exp-referit/tfmodel/referit_fc8_det_iter_%d.tfmodel'
+snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 
 ################################################################################
 # The model
@@ -56,12 +56,12 @@ snapshot_file = './exp-referit/tfmodel/referit_fc8_det_iter_%d.tfmodel'
 
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])
-imcrop_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
-spatial_batch = tf.placeholder(tf.float32, [N, 8])
+im_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
+spatial_batch = tf.placeholder(tf.float32, [N, 8]) ###
 label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
-scores = segmodel.text_objseg_region(text_seq_batch, imcrop_batch,
+scores = segmodel.text_objseg_cls(text_seq_batch, im_batch,
     spatial_batch, num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
@@ -100,7 +100,7 @@ print('Done.')
 # Loss function and accuracy
 ###############################################################################
 
-cls_loss = loss.multiclass_entropy_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
+cls_loss = loss.weighed_logistic_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
 reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
 total_loss = cls_loss + reg_loss
 
@@ -175,7 +175,7 @@ sess = tf.Session()
 # Run Initialization operations
 sess.run(tf.global_variables_initializer())
 sess.run(tf.group(*init_ops))
-'''
+
 ################################################################################
 # Optimization loop
 ################################################################################
@@ -189,7 +189,7 @@ for n_iter in range(max_iter):
     # Read one batch
     batch = reader.read_batch()
     text_seq_val = batch['text_seq_batch']
-    imcrop_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
+    im_val = batch['im_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
     spatial_batch_val = batch['spatial_batch']
     label_val = batch['label_batch'].astype(np.float32)
 
@@ -199,8 +199,8 @@ for n_iter in range(max_iter):
     scores_val, cls_loss_val, _, lr_val = sess.run([scores, cls_loss, train_step, learning_rate],
         feed_dict={
             text_seq_batch  : text_seq_val,
-            imcrop_batch    : imcrop_val,
-            spatial_batch   : spatial_batch_val,
+            im_batch    : im_val,
+            spatial_batch   : spatial_batch_val, ###
             label_batch     : label_val
         })
     cls_loss_avg = decay*cls_loss_avg + (1-decay)*cls_loss_val
@@ -221,7 +221,7 @@ for n_iter in range(max_iter):
     if (n_iter+1) % snapshot == 0 or (n_iter+1) == max_iter:
         snapshot_saver.save(sess, snapshot_file % (n_iter+1))
         print('snapshot saved to ' + snapshot_file % (n_iter+1))
-'''
+
 snapshot_saver.save(sess, snapshot_file % 0)
 print('snapshot saved to ' + snapshot_file % 0)
 print('Optimization done.')
