@@ -15,7 +15,7 @@ from util import loss
 
 # Model Params
 T = 20
-N = 50
+N = 10
 input_H = 512; featmap_H = (input_H // 32)
 input_W = 512; featmap_W = (input_W // 32)
 num_vocab = 8803
@@ -59,10 +59,10 @@ snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])
 im_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
-label_batch = tf.placeholder(tf.float32, [N, 16, 16, 1])
+label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
-scores = segmodel.text_objseg_full_conv(text_seq_batch, im_batch,
+scores = segmodel.text_objseg_cls(text_seq_batch, im_batch,
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 

@@ -66,9 +66,9 @@ def text_objseg_cls(text_seq_batch, im_batch, num_vocab, embed_dim,
     with tf.variable_scope('classifier'):
         mlp_l1 = conv_relu('mlp_l1', feat_all, kernel_size=1, stride=1,
                        output_dim=mlp_hidden_dims)
-        if mlp_dropout: mlp_l1 = drop(mlp_l1, 0.5)
-        mlp_l2 = conv('mlp_l2', mlp_l1, kernel_size=1, stride=1, output_dim=1)
-        #mlp_l2 = fc('mlp_l2', mlp_l1, output_dim=1)
+        #if mlp_dropout: mlp_l1 = drop(mlp_l1, 0.5)
+        #mlp_l2 = conv('mlp_l2', mlp_l1, kernel_size=1, stride=1, output_dim=1)
+        mlp_l2 = fc('mlp_l2', mlp_l1, output_dim=1)
                                                     
     return mlp_l2
 
