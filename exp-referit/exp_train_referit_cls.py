@@ -43,8 +43,8 @@ mlp_dropout = False
 vgg_lr_mult = 1.
 
 # Data Params
-data_folder = './exp-referit/data/train_batch_cls/'
-data_prefix = 'referit_train_cls'
+data_folder = './exp-referit/data/train_batch_cap/'
+data_prefix = 'referit_train_cap'
 
 # Snapshot Params
 snapshot = 5000
@@ -57,12 +57,11 @@ snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])
 im_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
-spatial_batch = tf.placeholder(tf.float32, [N, 8]) ###
 label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
 scores = segmodel.text_objseg_cls(text_seq_batch, im_batch,
-    spatial_batch, num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
+    num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
 ################################################################################
@@ -156,11 +155,12 @@ with tf.variable_scope('vgg_local', reuse=True):
 with tf.variable_scope('classifier', reuse=True):
     mlp_l1 = tf.get_variable('mlp_l1/weights')
     mlp_l2 = tf.get_variable('mlp_l2/weights')
-    print(mlp_l1.get_shape())
     init_mlp_l1 = tf.assign(mlp_l1, np.random.normal(
         0, mlp_l1_std, mlp_l1.get_shape().as_list()).astype(np.float32))
     init_mlp_l2 = tf.assign(mlp_l2, np.random.normal(
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
+
+    print(mlp_l1.get_shape())
     print(mlp_l2.get_shape())
 
 init_ops += [init_mlp_l1, init_mlp_l2]
@@ -190,7 +190,6 @@ for n_iter in range(max_iter):
     batch = reader.read_batch()
     text_seq_val = batch['text_seq_batch']
     im_val = batch['im_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
-    spatial_batch_val = batch['spatial_batch']
     label_val = batch['label_batch'].astype(np.float32)
 
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
@@ -200,7 +199,6 @@ for n_iter in range(max_iter):
         feed_dict={
             text_seq_batch  : text_seq_val,
             im_batch    : im_val,
-            spatial_batch   : spatial_batch_val, ###
             label_batch     : label_val
         })
     cls_loss_avg = decay*cls_loss_avg + (1-decay)*cls_loss_val

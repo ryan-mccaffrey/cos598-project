@@ -35,29 +35,34 @@ def text_objseg_region(text_seq_batch, imcrop_batch, spatial_batch, num_vocab,
 
     return mlp_l2
 
-def text_objseg_cls(text_seq_batch, im_batch, spatial_batch, num_vocab,
-    embed_dim, lstm_dim, mlp_hidden_dims, vgg_dropout, mlp_dropout):
+def text_objseg_cls(text_seq_batch, im_batch, num_vocab, embed_dim,
+            lstm_dim, mlp_hidden_dims, vgg_dropout, mlp_dropout):
 
     # Language feature (LSTM hidden state)
     feat_lang = lstm_net.lstm_net(text_seq_batch, num_vocab, embed_dim, lstm_dim)
 
     # Local image feature
-    feat_vis = vgg_net.vgg_fc8(im_batch, 'vgg_local', apply_dropout=vgg_dropout)
+    feat_vis = vgg_net.vgg_fc8_full_conv(imcrop_batch, 'vgg_local',
+        apply_dropout=vgg_dropout)
 
-    # L2-normalize the features (except for spatial_batch: x-y coordinates)
-    # and concatenate them
+    # Reshape and tile LSTM top
+    featmap_H, featmap_W = feat_vis.get_shape().as_list()[1:3]
+    N, D_text = feat_lang.get_shape().as_list()
+    feat_lang = tf.tile(tf.reshape(feat_lang, [N, 1, 1, D_text]),
+        [1, featmap_H, featmap_W, 1])
+
+    # L2-normalize the features (except for spatial_batch)
+    # and concatenate them along axis 1 (vectorize them)
+    # spatial_batch = tf.convert_to_tensor(generate_spatial_batch(N, featmap_H, featmap_W))
     feat_all = tf.concat(axis=1, values=[tf.nn.l2_normalize(feat_lang, 1),
-                             tf.nn.l2_normalize(feat_vis, 1),
-                             spatial_batch])
+                                tf.nn.l2_normalize(feat_vis, 1),])
+                                # spatial_batch])
 
     # MLP Classifier over concatenate feature
     with tf.variable_scope('classifier'):
         mlp_l1 = fc_relu('mlp_l1', feat_all, output_dim=mlp_hidden_dims)
         if mlp_dropout: mlp_l1 = drop(mlp_l1, 0.5)
         mlp_l2 = fc('mlp_l2', mlp_l1, output_dim=1)
-
-    # vectorize the final feature representation
-
 
     return mlp_l2
 
