@@ -1,3 +1,4 @@
+
 from __future__ import absolute_import, division, print_function
 
 import sys
@@ -58,11 +59,11 @@ snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])
-im_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
+imcrop_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
 label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
-scores = segmodel.text_objseg_cls(text_seq_batch, im_batch,
+scores = segmodel.text_objseg_cls(text_seq_batch, imcrop_batch,
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
@@ -196,7 +197,7 @@ for n_iter in range(max_iter):
     # Read one batch
     batch = reader.read_batch()
     text_seq_val = batch['text_seq_batch']
-    im_val = batch['im_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
+    im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
     label_val = batch['label_batch'].astype(np.float32)
 
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
@@ -205,7 +206,7 @@ for n_iter in range(max_iter):
     scores_val, cls_loss_val, _, lr_val = sess.run([scores, cls_loss, train_step, learning_rate],
         feed_dict={
             text_seq_batch  : text_seq_val,
-            im_batch    : im_val,
+            imcrop_batch    : im_val,
             label_batch     : label_val
         })
     cls_loss_avg = decay*cls_loss_avg + (1-decay)*cls_loss_val
