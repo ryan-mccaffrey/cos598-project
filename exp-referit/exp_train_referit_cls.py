@@ -16,6 +16,8 @@ from util import loss
 # Model Params
 T = 20
 N = 50
+input_H = 512; featmap_H = (input_H // 32)
+input_W = 512; featmap_W = (input_W // 32)
 num_vocab = 8803
 embed_dim = 1000
 lstm_dim = 1000
@@ -56,11 +58,11 @@ snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 
 # Inputs
 text_seq_batch = tf.placeholder(tf.int32, [T, N])
-im_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
-label_batch = tf.placeholder(tf.float32, [N, 1])
+im_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
+label_batch = tf.placeholder(tf.float32, [N, 16, 16, 1])
 
 # Outputs
-scores = segmodel.text_objseg_cls(text_seq_batch, im_batch,
+scores = segmodel.text_objseg_full_conv(text_seq_batch, im_batch,
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
@@ -116,6 +118,7 @@ def compute_accuracy(scores, labels):
     accuracy_neg = np.sum(is_correct[is_neg]) / num_neg
     return accuracy_all, accuracy_pos, accuracy_neg
 
+print("Loss initialized.")
 ################################################################################
 # Solver
 ################################################################################
@@ -132,6 +135,7 @@ grads_and_vars = [((g if var_lr_mult[v] == 1 else tf.multiply(var_lr_mult[v], g)
 # Apply gradients
 train_step = solver.apply_gradients(grads_and_vars, global_step=global_step)
 
+print("Solver initialized.")
 ################################################################################
 # Initialize parameters and load data
 ################################################################################
@@ -166,6 +170,8 @@ with tf.variable_scope('classifier', reuse=True):
 init_ops += [init_mlp_l1, init_mlp_l2]
 processed_params.close()
 
+print("Parameters initialized.")
+
 # Load data
 reader = data_reader.DataReader(data_folder, data_prefix)
 
@@ -176,6 +182,7 @@ sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 sess.run(tf.group(*init_ops))
 
+print("Data loaded.")
 ################################################################################
 # Optimization loop
 ################################################################################
