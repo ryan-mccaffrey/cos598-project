@@ -5,6 +5,7 @@ import sys
 import os; os.environ['CUDA_VISIBLE_DEVICES'] = sys.argv[1]
 import tensorflow as tf
 import numpy as np
+import math
 
 from models import text_objseg_model as segmodel
 from util import data_reader
@@ -215,9 +216,13 @@ for n_iter in range(max_iter):
 
     # Accuracy
     accuracy_all, accuracy_pos, accuracy_neg = segmodel.compute_accuracy(scores_val, label_val)
-    avg_accuracy_all = decay*avg_accuracy_all + (1-decay)*accuracy_all
-    avg_accuracy_pos = decay*avg_accuracy_pos + (1-decay)*accuracy_pos
-    avg_accuracy_neg = decay*avg_accuracy_neg + (1-decay)*accuracy_neg
+
+    if not math.isnan(accuracy_all):
+        avg_accuracy_all = decay*avg_accuracy_all + (1-decay)*accuracy_all
+    if not math.isnan(accuracy_pos):
+        avg_accuracy_pos = decay*avg_accuracy_pos + (1-decay)*accuracy_pos
+    if not math.isnan(accuracy_neg):
+        avg_accuracy_neg = decay*avg_accuracy_neg + (1-decay)*accuracy_neg
     print('\titer = %d, accuracy (cur) = %f (all), %f (pos), %f (neg)'
           % (n_iter, accuracy_all, accuracy_pos, accuracy_neg))
     print('\titer = %d, accuracy (avg) = %f (all), %f (pos), %f (neg)'
