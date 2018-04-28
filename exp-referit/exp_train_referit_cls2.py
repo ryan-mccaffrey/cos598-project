@@ -15,6 +15,69 @@ from util import loss
 # Parameters
 ################################################################################
 
+# Pretrained model
+det_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
+cls_model = './exp-referit/tfmodel/referit_fc8_seg_lowres_init.tfmodel'
+
+# Model Params
+T = 20
+N = 1
+
+num_vocab = 8803
+embed_dim = 1000
+lstm_dim = 1000
+mlp_hidden_dims = 500
+
+################################################################################
+# detection network
+################################################################################
+
+# Inputs
+text_seq_batch = tf.placeholder(tf.int32, [T, N])  # one batch per sentence
+imcrop_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
+spatial_batch = tf.placeholder(tf.float32, [N, 8])
+
+# Language feature (LSTM hidden state)
+_ = segmodel.text_objseg_region(text_seq_batch, imcrop_batch,
+    spatial_batch, num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
+    vgg_dropout=False, mlp_dropout=False)
+
+# Load pretrained detection model and fetch weights
+snapshot_loader = tf.train.Saver()
+with tf.Session() as sess:
+    snapshot_loader.restore(sess, det_model)
+    variable_dict = {var.name:var.eval(session=sess) for var in tf.global_variables()}
+
+################################################################################
+# CLS network
+################################################################################
+
+# Clear the graph
+tf.reset_default_graph()
+
+# Inputs
+text_seq_batch = tf.placeholder(tf.int32, [T, N])  # one batch per sentence
+imcrop_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
+
+_ = segmodel.text_objseg_cls2(text_seq_batch, imcrop_batch,
+    num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
+    vgg_dropout=False, mlp_dropout=False)
+
+# Assign outputs
+assign_ops = []
+for var in tf.global_variables():
+    assign_ops.append(tf.assign(var, variable_dict[var.name].reshape(var.get_shape().as_list())))
+
+# Save segmentation model initialization
+snapshot_saver = tf.train.Saver()
+with tf.Session() as sess:
+    sess.run(tf.group(*assign_ops))
+    snapshot_saver.save(sess, cls_model)
+
+################################################################################
+# Parameters
+################################################################################
+
 # Model Params
 T = 20
 N = 10
@@ -26,7 +89,6 @@ lstm_dim = 1000
 mlp_hidden_dims = 500
 
 # Initialization Params
-pretrained_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
 mlp_l1_std = 0.05
 mlp_l2_std = 0.1
 
@@ -64,7 +126,7 @@ imcrop_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
 label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
-scores = segmodel.text_objseg_cls2(text_seq_batch, imcrop_batch, 
+scores = segmodel.text_objseg_full_conv(text_seq_batch, imcrop_batch,
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
@@ -101,26 +163,12 @@ print('Done.')
 
 ################################################################################
 # Loss function and accuracy
-###############################################################################
+################################################################################
 
 cls_loss = loss.weighed_logistic_loss(scores, label_batch, pos_loss_mult, neg_loss_mult)
 reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
 total_loss = cls_loss + reg_loss
 
-def compute_accuracy(scores, labels):
-    is_pos = (labels != 0)
-    is_neg = np.logical_not(is_pos)
-    num_all = labels.shape[0]
-    num_pos = np.sum(is_pos)
-    num_neg = num_all - num_pos
-
-    is_correct = np.logical_xor(scores < 0, is_pos)
-    accuracy_all = np.sum(is_correct) / num_all
-    accuracy_pos = np.sum(is_correct[is_pos]) / num_pos
-    accuracy_neg = np.sum(is_correct[is_neg]) / num_neg
-    return accuracy_all, accuracy_pos, accuracy_neg
-
-print("Loss initialized.")
 ################################################################################
 # Solver
 ################################################################################
@@ -137,24 +185,11 @@ grads_and_vars = [((g if var_lr_mult[v] == 1 else tf.multiply(var_lr_mult[v], g)
 # Apply gradients
 train_step = solver.apply_gradients(grads_and_vars, global_step=global_step)
 
-print("Solver initialized.")
 ################################################################################
 # Initialize parameters and load data
 ################################################################################
 
-init_ops = []
-# Initialize classifier Parameters
-with tf.variable_scope('classifier', reuse=True):
-    mlp_l1 = tf.get_variable('mlp_l1/weights')
-    mlp_l2 = tf.get_variable('mlp_l2/weights')
-    init_mlp_l1 = tf.assign(mlp_l1, np.random.normal(
-        0, mlp_l1_std, mlp_l1.get_shape().as_list()).astype(np.float32))
-    init_mlp_l2 = tf.assign(mlp_l2, np.random.normal(
-        0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
-
-init_ops += [init_mlp_l1, init_mlp_l2]
-
-print("Parameters initialized.")
+snapshot_loader = tf.train.Saver(tf.trainable_variables())
 
 # Load data
 reader = data_reader.DataReader(data_folder, data_prefix)
@@ -163,20 +198,9 @@ snapshot_saver = tf.train.Saver()
 sess = tf.Session()
 
 # Run Initialization operations
-if tf.__version__.split('.')[0] == '1':
-    tf.trainable_variables = {
-        v.op.name.replace(
-                'rnn/multi_rnn_cell/cell_0/basic_lstm_cell/kernel',
-                'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Matrix').replace(
-                'rnn/multi_rnn_cell/cell_0/basic_lstm_cell/bias',
-                'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Bias'): v
-        for v in tf.trainable_variables()}
-snapshot_loader = tf.train.Saver(tf.trainable_variables())
 sess.run(tf.global_variables_initializer())
 snapshot_loader.restore(sess, pretrained_model)
-sess.run(tf.group(*init_ops))
 
-print("Data loaded.")
 ################################################################################
 # Optimization loop
 ################################################################################
