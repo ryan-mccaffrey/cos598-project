@@ -41,7 +41,7 @@ weight_decay = 0.0005
 momentum = 0.9
 max_iter = 25000
 
-fix_convnet = True
+fix_convnet = False #True
 vgg_dropout = False
 mlp_dropout = False
 vgg_lr_mult = 1.

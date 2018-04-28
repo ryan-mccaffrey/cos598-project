@@ -18,7 +18,7 @@ from util import loss
 # Pretrained model
 det_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
 cls_model = './exp-referit/tfmodel/referit_fc8_seg_lowres_init.tfmodel'
-
+det_model2 = './exp-referit/tfmodel/referit_fc8_det2_iter_25000.tfmodel'
 # Model Params
 T = 20
 N = 1
@@ -27,7 +27,6 @@ num_vocab = 8803
 embed_dim = 1000
 lstm_dim = 1000
 mlp_hidden_dims = 500
-
 ################################################################################
 # detection network
 ################################################################################
@@ -45,7 +44,7 @@ _ = segmodel.text_objseg_region(text_seq_batch, imcrop_batch,
 # Load pretrained detection model and fetch weights
 snapshot_loader = tf.train.Saver()
 with tf.Session() as sess:
-    snapshot_loader.restore(sess, det_model)
+    snapshot_loader.restore(sess, det_model2)
     variable_dict = {var.name:var.eval(session=sess) for var in tf.global_variables()}
 
 ################################################################################
