@@ -26,7 +26,7 @@ lstm_dim = 1000
 mlp_hidden_dims = 500
 
 # Initialization Params
-convnet_params = './models/convert_caffemodel/params/vgg_params.npz'
+pretrained_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
 mlp_l1_std = 0.05
 mlp_l2_std = 0.1
 
@@ -143,20 +143,6 @@ print("Solver initialized.")
 ################################################################################
 
 init_ops = []
-# Initialize CNN Parameters
-convnet_layers = ['conv1_1', 'conv1_2', 'conv2_1', 'conv2_2',
-                  'conv3_1', 'conv3_2', 'conv3_3',
-                  'conv4_1', 'conv4_2', 'conv4_3',
-                  'conv5_1', 'conv5_2', 'conv5_3', 'fc6', 'fc7', 'fc8']
-processed_params = np.load(convnet_params, encoding="latin1")
-processed_W = processed_params['processed_W'][()]
-processed_B = processed_params['processed_B'][()]
-with tf.variable_scope('vgg_local', reuse=True):
-    for l_name in convnet_layers:
-        assign_W = tf.assign(tf.get_variable(l_name + '/weights'), processed_W[l_name])
-        assign_B = tf.assign(tf.get_variable(l_name + '/biases'), processed_B[l_name])
-        init_ops += [assign_W, assign_B]
-
 # Initialize classifier Parameters
 with tf.variable_scope('classifier', reuse=True):
     mlp_l1 = tf.get_variable('mlp_l1/weights')
@@ -167,7 +153,6 @@ with tf.variable_scope('classifier', reuse=True):
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
 
 init_ops += [init_mlp_l1, init_mlp_l2]
-processed_params.close()
 
 print("Parameters initialized.")
 
@@ -178,7 +163,17 @@ snapshot_saver = tf.train.Saver()
 sess = tf.Session()
 
 # Run Initialization operations
+if tf.__version__.split('.')[0] == '1':
+    tf.trainable_variables = {
+        v.op.name.replace(
+                'rnn/multi_rnn_cell/cell_0/basic_lstm_cell/kernel',
+                'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Matrix').replace(
+                'rnn/multi_rnn_cell/cell_0/basic_lstm_cell/bias',
+                'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Bias'): v
+        for v in tf.trainable_variables()}
+snapshot_loader = tf.train.Saver(tf.trainable_variables())
 sess.run(tf.global_variables_initializer())
+snapshot_loader.restore(sess, pretrained_model)
 sess.run(tf.group(*init_ops))
 
 print("Data loaded.")

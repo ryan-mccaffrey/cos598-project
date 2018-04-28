@@ -57,7 +57,7 @@ def text_objseg_cls(text_seq_batch, imcrop_batch, num_vocab, embed_dim,
 
     return mlp_l2
 
-def text_objseg_full_conv(text_seq_batch, imcrop_batch, num_vocab, embed_dim,
+def text_objseg_cls2(text_seq_batch, imcrop_batch, num_vocab, embed_dim,
     lstm_dim, mlp_hidden_dims, vgg_dropout, mlp_dropout):
 
     # Language feature (LSTM hidden state)
