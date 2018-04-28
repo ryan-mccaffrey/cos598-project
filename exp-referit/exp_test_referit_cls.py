@@ -8,9 +8,10 @@ import tensorflow as tf
 import json
 import timeit
 
-from random import randomint, shuffle
+from random import randint, shuffle
 from collections import defaultdict
 from models import vgg_net, lstm_net, processing_tools
+from models import text_objseg_model as segmodel
 from util.cnn import fc_layer as fc
 from util.cnn import fc_relu_layer as fc_relu
 from util import im_processing, text_processing, eval_tools
@@ -37,6 +38,9 @@ num_vocab = 8803
 embed_dim = 1000
 lstm_dim = 1000
 mlp_hidden_dims = 500
+
+vgg_dropout = False
+mlp_dropout = False
 
 D_im = 1000
 D_text = lstm_dim
@@ -72,10 +76,11 @@ if tf.__version__.split('.')[0] == '1':
             'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Bias'): v
         for v in tf.global_variables()}
 
-snapshot_restorer = tf.train.Saver(variable_name_mapping)
+# snapshot_restorer = tf.train.Saver(variable_name_mapping)
+snapshot_restorer = tf.train.Saver(None)
 sess = tf.Session()
 # restores the iter_0.tfmodel
-snapshot_saver.restore(sess, pretrained_model % 0)
+snapshot_restorer.restore(sess, pretrained_model % 0)
 
 ################################################################################
 # Load annotations
@@ -110,7 +115,7 @@ for i, imname in enumerate(imexample_count):
     this_imcrop_names = imcrop_dict[imname]
     
     j = 0
-    while j < len(imexample_count[imname]):
+    while j < imexample_count[imname]:
         # choose random image index in imlist
         rand_img_idx = i
         while rand_img_idx == i:
@@ -149,9 +154,15 @@ for i, imname in enumerate(imexample_count):
 correct_predictions = 0
 total_predictions = 0
 
-# Pre-allocate arrays
+# Pre-allocate arrays, this does one img at a time
+# imcrop_val = np.zeros((input_H, input_W, 3), dtype=np.float32)
+# text_seq_val = np.zeros(T, dtype=np.int32)
+
 imcrop_val = np.zeros((N, input_H, input_W, 3), dtype=np.float32)
 text_seq_val = np.zeros((T, N), dtype=np.int32)
+
+print('text_seq_val before adding any vals:')
+print(text_seq_val)
 
 
 num_im = len(imlist)
@@ -176,18 +187,29 @@ for n_im in range(num_im):
     # Extract textual features from sentences
     for description, im_label in flat_query_dict[imname]:
         # Extract language feature
+        print('description:')
+        print(description)
         text_seq_val[:, 0] = text_processing.preprocess_sentence(description, vocab_dict, T)
+        print('so now i did something with test seq val and gonna print here')
+        print(text_seq_val)
         
         # TODO: ensure running through model correctly, this is the prediction step
         scores_val = sess.run(scores, feed_dict={
             text_seq_batch  : text_seq_val,
             imcrop_batch    : imcrop_val
         })
+        print('scores unmodified:')
+        print(scores_val)
         scores_val = np.squeeze(scores_val)
+        print('after squeezing:')
+        print(scores_val)
 
         # count if correct
         correct_predictions += (scores_val[0] == im_label)
         total_predictions += 1
+
+        # TODO: remove this after testing
+        break
 
 print('Final results on the whole test set')
 result_str = 'recall = %f\n'.format(float(correct_predictions)/total_predictions)
