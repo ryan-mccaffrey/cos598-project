@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -55,9 +54,8 @@ for n_imcrop in range(num_imcrop):
     if n_imcrop % 200 == 0: print('processing %d / %d' % (n_imcrop+1, num_imcrop))
     imcrop_name = imcrop_list[n_imcrop]
 
-    # Image and mask
+    # Image
     imname = imcrop_name.split('_', 1)[0] + '.jpg'
-    # mask_name = imcrop_name + '.mat'
     for description in query_dict[imcrop_name]:
         # Append F times to match num of false samples
         for i in range(F):
@@ -92,9 +90,7 @@ print('total batch number: %d' % num_batch)
 
 text_seq_batch = np.zeros((T, N), dtype=np.int32)
 imcrop_batch = np.zeros((N, input_H, input_W, 3), dtype=np.uint8)
-# label_coarse_batch = np.zeros((N, featmap_H, featmap_W, 1), dtype=np.bool)
-# label_fine_batch = np.zeros((N, input_H, input_W, 1), dtype=np.bool)
-pos_exnum_batch = np.zeros(N, dtype=np.bool)
+label_batch = np.zeros(N, dtype=np.bool)
 
 if not os.path.isdir(data_folder):
     os.mkdir(data_folder)
@@ -103,29 +99,20 @@ for n_batch in range(num_batch):
     batch_begin = n_batch * N
     batch_end = (n_batch+1) * N
     for n_sample in range(batch_begin, batch_end):
-        imname, description, pos_example = shuffled_training_samples[n_sample]
-        # imname, mask_name, description = shuffled_training_samples[n_sample]
+        imname, description, label = shuffled_training_samples[n_sample]
         im = skimage.io.imread(image_dir + imname)
-        # mask = load_gt_mask(mask_dir + mask_name).astype(np.float32)
-
+        
         processed_im = skimage.img_as_ubyte(im_processing.resize_and_pad(im, input_H, input_W))
         if processed_im.ndim == 2:
             processed_im = processed_im[:, :, np.newaxis]
-        # processed_mask = im_processing.resize_and_pad(mask, input_H, input_W)
-        # subsampled_mask = skimage.transform.downscale_local_mean(processed_mask, (32, 32))
-
-        # labels_fine = (processed_mask > 0)
-        # labels_coarse = (subsampled_mask > 0)
 
         text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
 
         text_seq_batch[:, n_sample-batch_begin] = text_seq
         imcrop_batch[n_sample-batch_begin, ...] = processed_im
-        # label_coarse_batch[n_sample-batch_begin, ...] = labels_coarse[:, :, np.newaxis]
-        # label_fine_batch[n_sample-batch_begin, ...] = labels_fine[:, :, np.newaxis]
-        pos_exnum_batch[n_sample-batch_begin] = pos_example
+        label_batch[n_sample-batch_begin] = label
 
     np.savez(file=data_folder + data_prefix + '_' + str(n_batch) + '.npz',
          text_seq_batch=text_seq_batch,
          imcrop_batch=imcrop_batch,
-         pos_exnum_batch=pos_exnum_batch)
+         label_batch=label_batch)

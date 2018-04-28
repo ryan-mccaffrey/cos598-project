@@ -166,9 +166,6 @@ with tf.variable_scope('classifier', reuse=True):
     init_mlp_l2 = tf.assign(mlp_l2, np.random.normal(
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
 
-    print(mlp_l1.get_shape())
-    print(mlp_l2.get_shape())
-
 init_ops += [init_mlp_l1, init_mlp_l2]
 processed_params.close()
 
@@ -199,7 +196,7 @@ for n_iter in range(max_iter):
     batch = reader.read_batch()
     text_seq_val = batch['text_seq_batch']
     im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
-    label_val = batch['pos_exnum_batch'].astype(np.float32).reshape(10,1)
+    label_val = batch['label_batch'].astype(np.float32).reshape(10,1)
 
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
 
