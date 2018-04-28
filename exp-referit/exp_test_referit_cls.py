@@ -18,14 +18,12 @@ from util import im_processing, text_processing, eval_tools
 ################################################################################
 
 image_dir = './exp-referit/referit-dataset/images/'
-bbox_proposal_dir = './exp-referit/data/referit_edgeboxes_top100/'
 query_file = './exp-referit/data/referit_query_test.json'
-bbox_file = './exp-referit/data/referit_bbox.json'
 imcrop_file = './exp-referit/data/referit_imcrop.json'
 imsize_file = './exp-referit/data/referit_imsize.json'
 vocab_file = './exp-referit/data/vocabulary_referit.txt'
 
-pretrained_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
+pretrained_model = './exp-referit/tfmodel/referit_fc8_cls_iter_25000.tfmodel'
 
 # Model Params
 T = 20
