@@ -123,7 +123,6 @@ print('total batch number: %d' % num_batch)
 
 text_seq_batch = np.zeros((T, N), dtype=np.int32)
 imcrop_batch = np.zeros((N, 224, 224, 3), dtype=np.uint8)
-spatial_batch = np.zeros((N, 8), dtype=np.float32)
 label_batch = np.zeros((N, 1), dtype=np.bool)
 
 if not os.path.isdir(data_folder):
@@ -140,18 +139,15 @@ for n_batch in range(num_batch):
         # grab bounding box from image
         imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
         imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
-        # spatial_feat = processing_tools.spatial_feature_from_bbox(sample_bbox, imsize)
         text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
 
         idx = n_sample - batch_begin
         text_seq_batch[:, idx] = text_seq
         imcrop_batch[idx, ...] = imcrop
-        # spatial_batch[idx, ...] = spatial_feat
         label_batch[idx] = label
 
     # store batches to disk
     np.savez(file=data_folder + data_prefix + '_' + str(n_batch) + '.npz',
         text_seq_batch=text_seq_batch,
         imcrop_batch=imcrop_batch,
-        # spatial_batch=spatial_batch,
         label_batch=label_batch)
