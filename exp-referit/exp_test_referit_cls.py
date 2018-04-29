@@ -31,7 +31,7 @@ pretrained_model = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
 
 # Model Params
 T = 20
-N = 10
+N = 1
 input_H = 224
 input_W = 224
 num_vocab = 8803
@@ -44,11 +44,6 @@ mlp_dropout = False
 
 D_im = 1000
 D_text = lstm_dim
-
-# Evaluation Param
-correct_iou_thresh = 0.5
-use_nms = False
-nms_thresh = 0.3
 
 ################################################################################
 # Evaluation network
@@ -63,7 +58,6 @@ label_batch = tf.placeholder(tf.float32, [N, 1])
 scores = segmodel.text_objseg_cls(text_seq_batch, imcrop_batch, 
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
     vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
-
 
 # Load pretrained model
 variable_name_mapping= None
@@ -146,7 +140,7 @@ for i, imname in enumerate(imexample_count):
 ################################################################################
 
 # TODO: run through the model
-# At this point, have a dictionary called flat_query_dict which is
+# At this point, we have a dictionary called flat_query_dict which is
 # key: image name, value: tuple of (description, label)
 # Note that each image name has values that have real descriptions with label 1,
 # and an equal number of "bad" descriptions with label 0.
@@ -161,26 +155,21 @@ total_predictions = 0
 imcrop_val = np.zeros((N, input_H, input_W, 3), dtype=np.float32)
 text_seq_val = np.zeros((T, N), dtype=np.int32)
 
-print('text_seq_val before adding any vals:')
-print(text_seq_val)
-
+#print('text_seq_val before adding any vals:')
+#print(text_seq_val)
 
 num_im = len(imlist)
 for n_im in range(num_im):
     print('testing image %d / %d' % (n_im, num_im))
     imname = imlist[n_im]
     imsize = imsize_dict[imname]
-    # bbox_proposals = bbox_proposal_dict[imname]
-    # num_proposal = bbox_proposals.shape[0]
-    # assert(N >= num_proposal)
-
+    
     # Extract visual features from all proposals
-    # TODO: Process image before testing? Must be consistent with how training
+    # Process image before testing
     im = skimage.io.imread(image_dir + imname)
     processed_im = skimage.img_as_ubyte(im_processing.resize_and_pad(im, input_H, input_W))
     if processed_im.ndim == 2:
         processed_im = np.tile(processed_im[:, :, np.newaxis], (1, 1, 3))
-    
 
     imcrop_val[...] = processed_im.astype(np.float32) - segmodel.vgg_net.channel_mean
 
@@ -190,26 +179,26 @@ for n_im in range(num_im):
         print('description:')
         print(description)
         text_seq_val[:, 0] = text_processing.preprocess_sentence(description, vocab_dict, T)
-        print('so now i did something with test seq val and gonna print here')
-        print(text_seq_val)
+        #print('so now i did something with test seq val and gonna print here')
+        #print(text_seq_val)
         
         # TODO: ensure running through model correctly, this is the prediction step
         scores_val = sess.run(scores, feed_dict={
             text_seq_batch  : text_seq_val,
             imcrop_batch    : imcrop_val
         })
-        print('scores unmodified:')
-        print(scores_val)
+        #print('scores unmodified:')
+        #print(scores_val)
         scores_val = np.squeeze(scores_val)
-        print('after squeezing:')
-        print(scores_val)
+        #print('after squeezing:')
+        #print(scores_val)
 
         # count if correct
-        correct_predictions += (scores_val[0] == im_label)
+        prediction = (scores_val > 0)
+        correct_predictions += (prediction == im_label)
         total_predictions += 1
 
-        # TODO: remove this after testing
-        break
+        print("%d correct_predictions out of %d" % (correct_predictions, total_predictions))
 
 print('Final results on the whole test set')
 result_str = 'recall = %f\n'.format(float(correct_predictions)/total_predictions)

@@ -39,7 +39,7 @@ lr_decay_step = 10000
 lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
-max_iter = 25000
+max_iter = 50000
 
 fix_convnet = False #True
 vgg_dropout = False
@@ -51,8 +51,8 @@ data_folder = './exp-referit/data/train_batch_cls/'
 data_prefix = 'referit_train_cls'
 
 # Snapshot Params
-snapshot = 5000
-snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d.tfmodel'
+snapshot = max_iter+2
+snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d_2.tfmodel'
 
 ################################################################################
 # The model
@@ -79,6 +79,8 @@ if fix_convnet:
 else:
     train_var_list = [var for var in tf.trainable_variables()
                       if not var.name.startswith('vgg_local/conv')]
+for var in tf.trainable_variables():
+    print(var.name)
 print('Collecting variables to train:')
 for var in train_var_list: print('\t%s' % var.name)
 print('Done.')

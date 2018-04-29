@@ -31,7 +31,7 @@ input_H = 224
 input_W = 224
 
 # num false samples per positive sample
-F = 5
+F = 1
 
 ################################################################################
 # Load annotations
@@ -81,7 +81,7 @@ shuffled_training_samples = [combined_samples[n] for n in shuffle_idx]
 print('total training instance number: %d' % len(shuffled_training_samples))
 
 # Create training batches
-num_batch = len(shuffled_training_samples) // N
+num_batch = 4000 #len(shuffled_training_samples) // N
 print('total batch number: %d' % num_batch)
 
 ################################################################################
