@@ -208,8 +208,10 @@ for n_batch in range(num_batch):
     # Evaluate on bounding labels
     for indx in range(len(scores_val)):
         correct_predictions += (scores_val[i] ==  label_val[i])
-    
+        total_predictions += 1
+        
     print("%d correct predictions out of %d" % (correct_predictions, total_predictions))
+    print(correct_predictions/total_predictions)
         
 print('Final results on the whole test set')
 result_str = 'recall = %f\n'.format(float(correct_predictions)/total_predictions)

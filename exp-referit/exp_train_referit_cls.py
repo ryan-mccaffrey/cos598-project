@@ -16,7 +16,7 @@ from util import loss
 
 # Model Params
 T = 20
-N = 10
+N = 50
 input_H = 224
 input_W = 224
 num_vocab = 8803
@@ -38,7 +38,9 @@ lr_decay_step = 10000
 lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
-max_iter = 50000
+
+# 5 epochs per batch; 6500 batches
+max_iter = 7500
 
 fix_convnet = False #True
 vgg_dropout = False
@@ -46,12 +48,12 @@ mlp_dropout = False
 vgg_lr_mult = 1.
 
 # Data Params
-data_folder = './exp-referit/data/train_batch_cls/'
-data_prefix = 'referit_train_cls'
+data_folder = './exp-referit/data/train_batch_cls_crop/'
+data_prefix = 'referit_train_cls_crop'
 
 # Snapshot Params
 snapshot = max_iter+2
-snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_iter_%d_2.tfmodel'
+snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_crop_iter_%d.tfmodel'
 
 ################################################################################
 # The model
@@ -197,7 +199,7 @@ for n_iter in range(max_iter):
     batch = reader.read_batch()
     text_seq_val = batch['text_seq_batch']
     im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
-    label_val = batch['label_batch'].astype(np.float32).reshape(10,1)
+    label_val = batch['label_batch'].astype(np.float32).reshape(N,1)
 
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
 
