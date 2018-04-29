@@ -45,11 +45,10 @@ neg_iou = 1e-6
 ################################################################################
 
 # Inputs
-text_seq_batch = tf.placeholder(tf.int32, [T, 1])  # one batch per sentence
+text_seq_batch = tf.placeholder(tf.int32, [T, N])
 imcrop_batch = tf.placeholder(tf.float32, [N, 224, 224, 3])
 lstm_top_batch = tf.placeholder(tf.float32, [N, D_text])
 fc8_crop_batch = tf.placeholder(tf.float32, [N, D_im])
-spatial_batch = tf.placeholder(tf.float32, [N, 8])
 
 # Language feature (LSTM hidden state)
 lstm_top = lstm_net.lstm_net(text_seq_batch, num_vocab, embed_dim, lstm_dim)
@@ -70,19 +69,9 @@ with tf.variable_scope('classifier'):
 scores = mlp_l2
 
 # Load pretrained model
-variable_name_mapping= None
-if tf.__version__.split('.')[0] == '1':
-    variable_name_mapping = {
-        v.op.name.replace(
-            'rnn/multi_rnn_cell/cell_0/basic_lstm_cell/kernel',
-            'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Matrix').replace(
-            'rnn/multi_rnn_cell/cell_0/basic_lstm_cell/bias',
-            'RNN/MultiRNNCell/Cell0/BasicLSTMCell/Linear/Bias'): v
-        for v in tf.global_variables()}
-
-snapshot_restorer = tf.train.Saver(variable_name_mapping)
+snapshot_restorer = tf.train.Saver(None)
 sess = tf.Session()
-snapshot_saver.restore(sess, pretrained_model)
+snapshot_restorer.restore(sess, pretrained_model)
 
 ################################################################################
 # Load annotations and bounding box proposals
@@ -110,12 +99,16 @@ for imname in imlist:
 # (imname, imsize, sample_bbox, description, label)
 # 1 as positive label and 0 as negative label (i.e. the probability of being pos)
 
+print("Total images:", len(imlist))
+count = 0
+
 # Gather testing sample per image
 # Positive testing sample includes the ground-truth
 testing_samples_pos = []
 testing_samples_neg = []
 for imname in imlist:
     this_imcrop_names = imcrop_dict[imname]
+    #print(this_imcrop_names); exit()
     imsize = imsize_dict[imname]
     bbox_proposals = bbox_proposal_dict[imname]
     # for each ground-truth annotation, use gt box and proposal boxes as positive examples
@@ -125,14 +118,15 @@ for imname in imlist:
             continue
         gt_bbox = np.array(bbox_dict[imcrop_name]).reshape((1, 4))
         IoUs = eval_tools.compute_bbox_iou(bbox_proposals, gt_bbox)
-        pos_boxes = gt_bbox #bbox_proposals[IoUs >= pos_iou, :]
-        # pos_boxes = np.concatenate((gt_bbox, pos_boxes), axis=0)
+        pos_boxes = gt_bbox
         neg_boxes = bbox_proposals[IoUs <  neg_iou, :]
 
         this_descriptions = query_dict[imcrop_name]
+        if count % 10000 == 0: print(this_descriptions)
         # generate them per description; 
         # ensure equal number of positive and negative examples
         for description in this_descriptions:
+            count += 1
             # Positive testing samples
             for n_pos in range(pos_boxes.shape[0]):
                 sample = (imname, imsize, pos_boxes[n_pos], description, 1)
@@ -145,6 +139,7 @@ for imname in imlist:
 # Print numbers of positive and negative samples
 print('#pos=', len(testing_samples_pos))
 print('#neg=', len(testing_samples_neg))
+print('Total img-captions pairs:', count)
 
 # Merge and shuffle testing examples
 testing_samples = testing_samples_pos + testing_samples_neg
@@ -163,11 +158,11 @@ print('total batch number: %d' % num_batch)
 
 # Pre-allocate arrays
 imcrop_val = np.zeros((N, 224, 224, 3), dtype=np.float32)
-text_seq_val = np.zeros((T, 1), dtype=np.int32)
+text_seq_val = np.zeros((T, N), dtype=np.int32)
 lstm_top_val = np.zeros((N, D_text))
-label_batch = np.zeros((N, 1), dtype=np.bool)
+label_val = np.zeros((N, 1), dtype=np.bool)
 
-print(num_batch * N, "crops collected.")
+print(num_batch * N, "batches collected.")
 correct_predictions = 0
 total_predictions = 0
 
@@ -180,11 +175,17 @@ for n_batch in range(num_batch):
         im = skimage.io.imread(image_dir + imname)
         xmin, ymin, xmax, ymax = sample_bbox
 
-        # grab bounding box from image
-        imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
-        imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
-        text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-
+        if len(np.shape(im)) == 3:
+            # grab bounding box from image
+            imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
+            imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
+            text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
+        else:
+            # force grayscale iages to negative example
+            imcrop = np.zeros((224, 224, 3), dtype=np.float32)
+            text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
+            label = 0
+            
         idx = n_sample - batch_begin
         text_seq_val[:, idx] = text_seq
         imcrop_val[idx, ...] = imcrop
@@ -194,7 +195,6 @@ for n_batch in range(num_batch):
     fc8_crop_val = sess.run(fc8_crop, feed_dict={imcrop_batch:imcrop_val})
 
     # Extract language feature
-    text_seq_val[:, 0] = text_processing.preprocess_sentence(description, vocab_dict, T)
     lstm_top_val[...] = sess.run(lstm_top, feed_dict={text_seq_batch:text_seq_val})
 
     # Compute scores per proposal
@@ -203,11 +203,12 @@ for n_batch in range(num_batch):
             lstm_top_batch:lstm_top_val,
             fc8_crop_batch:fc8_crop_val
         })
-    scores_val = scores_val[:num_proposal, ...].reshape(-1)
-
+    scores_val = scores_val[:batch_end-batch_begin+1, ...].reshape(-1)
+    #print(sum(scores_val>0))
+    
     # Evaluate on bounding labels
     for indx in range(len(scores_val)):
-        correct_predictions += (scores_val[i] ==  label_val[i])
+        correct_predictions += ((scores_val[indx] > 0) ==  label_val[indx])
         total_predictions += 1
         
     print("%d correct predictions out of %d" % (correct_predictions, total_predictions))
