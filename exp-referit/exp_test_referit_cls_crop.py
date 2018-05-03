@@ -172,7 +172,11 @@ def main(args):
     print('#pos=', len(testing_samples_pos))
     print('#neg=', len(testing_samples_neg))
     print('Total img-captions pairs:', count)
-    testing_samples = testing_samples_pos + testing_samples_neg
+
+    if args.multicrop:
+        testing_samples = testing_samples_pos + testing_samples_neg
+    else:
+        testing_samples = testing_samples_neg
 
     # Merge and shuffle testing examples
     np.random.seed(3)
@@ -203,6 +207,11 @@ def main(args):
         batch_begin = n_batch * N
         batch_end = (n_batch+1) * N
 
+        # load and preprocess first image per batch
+        first_imname = shuffled_testing_samples[0][0]
+        first_im = skimage.io.imread(image_dir + first_imname)
+        first_imcrop = skimage.img_as_ubyte(skimage.transform.resize(first_im, [224, 224]))
+
         for n_sample in range(batch_begin, batch_end):
             if args.crops:
                 imname, imsize, sample_bbox, description, label = shuffled_testing_samples[n_sample]
@@ -211,8 +220,11 @@ def main(args):
 
                 if len(np.shape(im)) == 3:
                     # grab bounding box from image
-                    imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
-                    imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
+                    if args.multicrop:
+                        imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
+                        imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
+                    else:
+                        imcrop = first_imcrop
                     text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
                 else:
                     # ignore grayscale images
@@ -231,7 +243,10 @@ def main(args):
                 im = skimage.io.imread(image_dir + imname)
 
                 if len(np.shape(im)) == 3:
-                    imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
+                    if args.multicrop:
+                        imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
+                    else:
+                        imcrop = first_imcrop
                     text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
                 else:
                     # ignore grayscale images
@@ -275,7 +290,7 @@ def main(args):
 
 '''
 Sample execution: 
-python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --crops
+python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --crops --multiple
 Pass --full as a second argument for full images.
 '''
 DESCRIPTION = """Performance evaluation suite for cls_crop model."""
@@ -285,6 +300,8 @@ if __name__ == '__main__':
     parser.add_argument('GPU_ID', help='GU_ID; if single-GPU, enter 0.')
     parser.add_argument('--crops', dest='crops', action='store_true')
     parser.add_argument('--full', dest='crops', action='store_false')
+    parser.add_argument('--multiple', dest='multicrop', action='store_true')
+    parser.add_argument('--single', dest='multicrop', action='store_false')
     args = parser.parse_args()
     main(args)
 
