@@ -26,19 +26,19 @@ data_prefix = 'referit_train_cls'
 
 # Model Params
 T = 20
-N = 10 # number of items per batch
+N = 50
 input_H = 224
 input_W = 224
 
 # num false samples per positive sample
-F = 1
+F = 5
 
 ################################################################################
 # Load annotations
 ################################################################################
 
-query_dict = json.load(open(query_file))
-imsize_dict = json.load(open(imsize_file))
+query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]                                          #             "7023_5","7023_2","7023_4"]
+imsize_dict = json.load(open(imsize_file)) #"7023.jpg":[480,360]
 imcrop_list = query_dict.keys()
 vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
@@ -81,7 +81,7 @@ shuffled_training_samples = [combined_samples[n] for n in shuffle_idx]
 print('total training instance number: %d' % len(shuffled_training_samples))
 
 # Create training batches
-num_batch = 4000 #len(shuffled_training_samples) // N
+num_batch = len(shuffled_training_samples) // N
 print('total batch number: %d' % num_batch)
 
 ################################################################################

@@ -40,6 +40,8 @@ D_text = lstm_dim
 
 neg_iou = 1e-6
 
+F = 1
+
 ################################################################################
 # Evaluation network
 ################################################################################
@@ -77,10 +79,9 @@ snapshot_restorer.restore(sess, pretrained_model)
 # Load annotations and bounding box proposals
 ################################################################################
 
-query_dict = json.load(open(query_file))
-imcrop_dict = json.load(open(imcrop_file))
-imsize_dict = json.load(open(imsize_file))
-imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
+query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]                                          #             "7023_5","7023_2","7023_4"]
+imsize_dict = json.load(open(imsize_file)) #"7023.jpg":[480,360]
+imcrop_list = query_dict.keys()
 vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
 ################################################################################
@@ -101,7 +102,7 @@ for n_imcrop in range(num_imcrop):
     # Image
     imname = imcrop_name.split('_', 1)[0] + '.jpg'
     for description in query_dict[imcrop_name]:
-        # Append F times to match num of false samples
+        # append F times to match num of false samples
         for i in range(F):
             testing_samples_pos.append((imname, description, 1))
 
@@ -117,8 +118,8 @@ for n_imcrop in range(num_imcrop):
             testing_samples_neg.append((imname, descriptions[desc_idx], 0))
 
 # Combine samples
-print('#pos=', len(testing_samples_pos_pos))
-print('#neg=', len(testing_samples_pos_neg))
+print('#pos=', len(testing_samples_pos))
+print('#neg=', len(testing_samples_neg))
 combined_samples = testing_samples_pos + testing_samples_neg
 
 # Shuffle the testing instances
@@ -157,14 +158,15 @@ for n_batch in range(num_batch):
             imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
             text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
         else:
-            # force grayscale iages to negative example
-            imcrop = np.zeros((224, 224, 3), dtype=np.float32)
-            text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-            label = 0
+            # ignore grayscale images to negative example
+            continue
+            # imcrop = np.zeros((224, 224, 3), dtype=np.float32)
+            # text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
+            # label = 0
             
         idx = n_sample - batch_begin
         text_seq_val[:, idx] = text_seq
-        imcrop_val[idx, ...] = imcrop
+        imcrop_val[idx, ...] = imcrop - vgg_net.channel_mean
         label_val[idx] = label
 
     # Extract visual feature
@@ -180,7 +182,6 @@ for n_batch in range(num_batch):
             fc8_crop_batch:fc8_crop_val
         })
     scores_val = scores_val[:batch_end-batch_begin+1, ...].reshape(-1)
-    #print(sum(scores_val>0))
     
     # Evaluate on bounding labels
     for indx in range(len(scores_val)):

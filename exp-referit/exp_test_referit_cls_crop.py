@@ -77,10 +77,11 @@ snapshot_restorer.restore(sess, pretrained_model)
 # Load annotations and bounding box proposals
 ################################################################################
 
-query_dict = json.load(open(query_file))
-bbox_dict = json.load(open(bbox_file))
-imcrop_dict = json.load(open(imcrop_file))
-imsize_dict = json.load(open(imsize_file))
+query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
+bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
+imcrop_dict = json.load(open(imcrop_file)) # "7023.jpg":["7023_3","7023_7","7023_1","7023_6",
+                                           #             "7023_5","7023_2","7023_4"]
+imsize_dict = json.load(open(imsize_file)) # "7023.jpg":[480,360]
 imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
 vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
@@ -94,11 +95,6 @@ for imname in imlist:
 # Load testing data
 ################################################################################
 
-# Generate a list of testing samples
-# Each testing sample is a tuple of 5 elements of
-# (imname, imsize, sample_bbox, description, label)
-# 1 as positive label and 0 as negative label (i.e. the probability of being pos)
-
 print("Total images:", len(imlist))
 count = 0
 
@@ -108,10 +104,10 @@ testing_samples_pos = []
 testing_samples_neg = []
 for imname in imlist:
     this_imcrop_names = imcrop_dict[imname]
-    #print(this_imcrop_names); exit()
     imsize = imsize_dict[imname]
     bbox_proposals = bbox_proposal_dict[imname]
-    # for each ground-truth annotation, use gt box and proposal boxes as positive examples
+
+    # for each ground-truth annotation, use gt boxes as positive examples
     # and proposal box with small iou as negative examples
     for imcrop_name in this_imcrop_names:
         if not imcrop_name in query_dict:
@@ -121,10 +117,9 @@ for imname in imlist:
         pos_boxes = gt_bbox
         neg_boxes = bbox_proposals[IoUs <  neg_iou, :]
 
-        this_descriptions = query_dict[imcrop_name]
-        if count % 10000 == 0: print(this_descriptions)
         # generate them per description; 
         # ensure equal number of positive and negative examples
+        this_descriptions = query_dict[imcrop_name]
         for description in this_descriptions:
             count += 1
             # Positive testing samples
@@ -181,14 +176,12 @@ for n_batch in range(num_batch):
             imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
             text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
         else:
-            # force grayscale iages to negative example
-            imcrop = np.zeros((224, 224, 3), dtype=np.float32)
-            text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-            label = 0
+            # ignore grayscale images
+            continue
             
         idx = n_sample - batch_begin
         text_seq_val[:, idx] = text_seq
-        imcrop_val[idx, ...] = imcrop
+        imcrop_val[idx, ...] = imcrop - vgg_net.channel_mean
         label_val[idx] = label
 
     # Extract visual feature
