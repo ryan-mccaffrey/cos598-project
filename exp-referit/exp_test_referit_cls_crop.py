@@ -46,7 +46,7 @@ neg_iou = 1e-6
 
 F = 1
 
-def main():
+def main(args):
 
     # Initialize GPU
     os.environ['CUDA_VISIBLE_DEVICES'] = args.GPU_ID
@@ -95,6 +95,7 @@ def main():
     imsize_dict = json.load(open(imsize_file)) # "7023.jpg":[480,360]
     imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
     vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+    imcrop_list = list(query_dict.keys())
 
     # Object proposals
     bbox_proposal_dict = {}
@@ -202,8 +203,8 @@ def main():
         batch_begin = n_batch * N
         batch_end = (n_batch+1) * N
 
-        if args.crops:
-            for n_sample in range(batch_begin, batch_end):
+        for n_sample in range(batch_begin, batch_end):
+            if args.crops:
                 imname, imsize, sample_bbox, description, label = shuffled_testing_samples[n_sample]
                 im = skimage.io.imread(image_dir + imname)
                 xmin, ymin, xmax, ymax = sample_bbox
@@ -225,25 +226,25 @@ def main():
                 # a = fig.add_subplot(1, 2, 2)
                 # plt.imshow(imcrop)
                 # plt.show()
-        else:
-            imname, description, label = shuffled_testing_samples[n_sample]
-            im = skimage.io.imread(image_dir + imname)
-
-            if len(np.shape(im)) == 3:
-                imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
-                text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
             else:
-                # ignore grayscale images
-                # imcrop = np.zeros((224, 224, 3), dtype=np.float32)
-                # text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-                # label = 0
-                continue
+                imname, description, label = shuffled_testing_samples[n_sample]
+                im = skimage.io.imread(image_dir + imname)
+
+                if len(np.shape(im)) == 3:
+                    imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
+                    text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
+                else:
+                    # ignore grayscale images
+                    # imcrop = np.zeros((224, 224, 3), dtype=np.float32)
+                    # text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
+                    # label = 0
+                    continue
                 
-        # Form batch
-        idx = n_sample - batch_begin
-        text_seq_val[:, idx] = text_seq
-        imcrop_val[idx, ...] = imcrop - vgg_net.channel_mean
-        label_val[idx] = label
+            # Form batch
+            idx = n_sample - batch_begin
+            text_seq_val[:, idx] = text_seq
+            imcrop_val[idx, ...] = imcrop - vgg_net.channel_mean
+            label_val[idx] = label
 
         # Extract visual feature
         fc8_crop_val = sess.run(fc8_crop, feed_dict={imcrop_batch:imcrop_val})
@@ -274,13 +275,13 @@ def main():
 
 '''
 Sample execution: 
-python multi_classifier.py gt data/test_data data/classifications 0
+python exp-referit/exp_test_referit_cls_crop.py $GPU_ID True
 '''
-DESCRIPTION = """Multi-classifier of playing card suit-value. Requires cards placed on green felt."""
+DESCRIPTION = """Performance evaluation suite for cls_crop model."""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=DESCRIPTION)
-    parser.add_argument('GPU_ID', type=int, help='GU_ID; if single-GPU, enter 0.')
+    parser.add_argument('GPU_ID', help='GU_ID; if single-GPU, enter 0.')
     parser.add_argument('crops', type=bool, help='True to test on image crops; False to test on full images.')
     args = parser.parse_args()
     main(args)
