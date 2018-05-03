@@ -112,6 +112,7 @@ def main(args):
     testing_samples_neg = []
     num_imcrop = len(imcrop_list)
 
+    print("Crops - True | Full Images - False:", args.crops)
     if args.crops:
         # Gather a testing example per image crop.
         for imname in imlist:
@@ -146,7 +147,6 @@ def main(args):
     else:
         # Gather a testing example per full image.
         for n_imcrop in range(num_imcrop):
-            if n_imcrop % 200 == 0: print('processing %d / %d' % (n_imcrop+1, num_imcrop))
             imcrop_name = imcrop_list[n_imcrop]
 
             # Image
@@ -275,14 +275,16 @@ def main(args):
 
 '''
 Sample execution: 
-python exp-referit/exp_test_referit_cls_crop.py $GPU_ID True
+python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --crops
+Pass --full as a second argument for full images.
 '''
 DESCRIPTION = """Performance evaluation suite for cls_crop model."""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument('GPU_ID', help='GU_ID; if single-GPU, enter 0.')
-    parser.add_argument('crops', type=bool, help='True to test on image crops; False to test on full images.')
+    parser.add_argument('--crops', dest='crops', action='store_true')
+    parser.add_argument('--full', dest='crops', action='store_false')
     args = parser.parse_args()
     main(args)
 
