@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+import sys; sys.path.append('./coco')
+
 import numpy as np
 import os
 import json
@@ -7,6 +9,7 @@ import skimage
 import skimage.io
 import skimage.transform
 
+from coco.pycocotools.coco import COCO
 from random import randint
 from util import im_processing, text_processing
 from util.io import load_referit_gt_mask as load_gt_mask
@@ -15,31 +18,32 @@ from util.io import load_referit_gt_mask as load_gt_mask
 # Parameters
 ################################################################################
 
-image_dir = './exp-referit/referit-dataset/images/'
-query_file = './exp-referit/data/referit_query_trainval.json'
-imsize_file = './exp-referit/data/referit_imsize.json'
+image_dir = './coco/images/'
+query_file = './coco/annotations/instances_train2017.json'
+caption_file = './coco/annotations/captions_train2017.json'
+# still using referit vocab file
 vocab_file = './exp-referit/data/vocabulary_referit.txt'
 
 # Saving directory
-data_folder = './exp-referit/data/train_batch_cls/'
-data_prefix = 'referit_train_cls'
+data_folder = './coco/data/train_batch_cls/'
+data_prefix = 'coco_train_cls'
 
 # Model Params
 T = 20
-N = 50
+N = 10 # number of items per batch
 input_H = 224
 input_W = 224
 
 # num false samples per positive sample
-F = 5
+F = 1
 
 ################################################################################
 # Load annotations
 ################################################################################
 
-query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]                                          #             "7023_5","7023_2","7023_4"]
-imsize_dict = json.load(open(imsize_file)) #"7023.jpg":[480,360]
-imcrop_list = query_dict.keys()
+coco = COCO(query_file)
+coco_captions = COCO(caption_file)
+imgid_list = coco.getImgIds()
 vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
 ################################################################################
@@ -48,18 +52,19 @@ vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
 training_samples = []
 false_samples = []
-num_imcrop = len(imcrop_list)
+num_imcrop = len(imgid_list)
 
 for n_imcrop in range(num_imcrop):
     if n_imcrop % 200 == 0: print('processing %d / %d' % (n_imcrop+1, num_imcrop))
-    imcrop_name = imcrop_list[n_imcrop]
+    img_id = imgid_list[n_imcrop]
 
-    # Image
-    imname = imcrop_name.split('_', 1)[0] + '.jpg'
-    for description in query_dict[imcrop_name]:
+    # get the decriptions of the image
+    caption_ids = coco_captions.getAnnIds(imgIds=img_id)
+    captions = [x['caption'].strip() for x in coco_captions.loadAnns(caption_ids)]
+    for description in captions:
         # Append F times to match num of false samples
         for i in range(F):
-            training_samples.append((imname, description, 1))
+            training_samples.append((img_id, description, 1))
 
         # generate F false samples for each positive sample
         for i in range(F):
@@ -67,10 +72,11 @@ for n_imcrop in range(num_imcrop):
             # and choose one at random
             false_idx = n_imcrop
             while false_idx == n_imcrop: false_idx = randint(0, num_imcrop-1)
-            descriptions = query_dict[imcrop_list[false_idx]]
-            desc_idx = randint(0, len(descriptions)-1)
+            desc_ids = coco_captions.getAnnIds(imgid_list[false_idx])
+            desc_idx = randint(0, len(desc_ids)-1)
+            false_cap = coco_captions.loadAnns(desc_ids[desc_idx])[0]['caption'].strip()
 
-            false_samples.append((imname, descriptions[desc_idx], 0))
+            false_samples.append((img_id, false_cap, 0))
 
 combined_samples = training_samples + false_samples
 
@@ -81,7 +87,8 @@ shuffled_training_samples = [combined_samples[n] for n in shuffle_idx]
 print('total training instance number: %d' % len(shuffled_training_samples))
 
 # Create training batches
-num_batch = len(shuffled_training_samples) // N
+# TODO: change from a static number to length if we want more batches
+num_batch = 4000 #len(shuffled_training_samples) // N
 print('total batch number: %d' % num_batch)
 
 ################################################################################
@@ -99,8 +106,10 @@ for n_batch in range(num_batch):
     batch_begin = n_batch * N
     batch_end = (n_batch+1) * N
     for n_sample in range(batch_begin, batch_end):
-        imname, description, label = shuffled_training_samples[n_sample]
-        im = skimage.io.imread(image_dir + imname)
+        img_id, description, label = shuffled_training_samples[n_sample]
+        # load image and get host url for image
+        imname = coco.loadImgs(img_id)[0]['coco_url']
+        im = skimage.io.imread(imname)
         
         processed_im = skimage.img_as_ubyte(im_processing.resize_and_pad(im, input_H, input_W))
         if processed_im.ndim == 2:

@@ -39,15 +39,16 @@ T = 20
 # Load annotations and bounding box proposals
 ################################################################################
 
-query_dict = json.load(open(query_file))
-bbox_dict = json.load(open(bbox_file))
-imcrop_dict = json.load(open(imcrop_file))
-imsize_dict = json.load(open(imsize_file))
+query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
+bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
+imcrop_dict = json.load(open(imcrop_file)) # "7023.jpg":["7023_3","7023_7","7023_1","7023_6",
+                                           #             "7023_5","7023_2","7023_4"]
+imsize_dict = json.load(open(imsize_file)) #"7023.jpg":[480,360]
 imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
 vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
-# Object proposals
-bbox_proposal_dict = {}
+# Object proposals; Format: xmin, ymin, xmax, ymax
+bbox_proposal_dict = {} 
 for imname in imlist:
     bboxes = np.loadtxt(bbox_proposal_dir + imname[:-4] + '.txt').astype(int).reshape((-1, 4))
     bbox_proposal_dict[imname] = bboxes
@@ -55,11 +56,6 @@ for imname in imlist:
 ################################################################################
 # Load training data
 ################################################################################
-
-# Generate a list of training samples
-# Each training sample is a tuple of 5 elements of
-# (imname, imsize, sample_bbox, description, label)
-# 1 as positive label and 0 as negative label (i.e. the probability of being pos)
 
 # Gather training sample per image
 # Positive training sample includes the ground-truth
@@ -72,17 +68,18 @@ for imname in imlist:
     # for each ground-truth annotation, use gt box and proposal boxes as positive examples
     # and proposal box with small iou as negative examples
     for imcrop_name in this_imcrop_names:
+
+        # grab groundtruth and negative bounding boxes per example
         if not imcrop_name in query_dict:
             continue
         gt_bbox = np.array(bbox_dict[imcrop_name]).reshape((1, 4))
         IoUs = eval_tools.compute_bbox_iou(bbox_proposals, gt_bbox)
-        pos_boxes = gt_bbox #bbox_proposals[IoUs >= pos_iou, :]
-        # pos_boxes = np.concatenate((gt_bbox, pos_boxes), axis=0)
+        pos_boxes = gt_bbox 
         neg_boxes = bbox_proposals[IoUs <  neg_iou, :]
 
-        this_descriptions = query_dict[imcrop_name]
-        # generate them per description; 
+        # generate one example per description; 
         # ensure equal number of positive and negative examples
+        this_descriptions = query_dict[imcrop_name]
         for description in this_descriptions:
             # Positive training samples
             for n_pos in range(pos_boxes.shape[0]):
@@ -96,15 +93,6 @@ for imname in imlist:
 # Print numbers of positive and negative samples
 print('#pos=', len(training_samples_pos))
 print('#neg=', len(training_samples_neg))
-
-# Subsample negative training data
-# np.random.seed(3)
-# sample_idx = np.random.choice(len(training_samples_neg),
-#                               min(len(training_samples_neg),
-#                                   int(neg_to_pos_ratio*len(training_samples_pos))),
-#                               replace=False)
-# training_samples_neg_subsample = [training_samples_neg[n] for n in sample_idx]
-# print('#neg_subsample=', len(training_samples_neg_subsample))
 
 # Merge and shuffle training examples
 training_samples = training_samples_pos + training_samples_neg

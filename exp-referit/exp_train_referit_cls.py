@@ -16,7 +16,7 @@ from util import loss
 
 # Model Params
 T = 20
-N = 50
+N = 10
 input_H = 224
 input_W = 224
 num_vocab = 8803
@@ -48,8 +48,9 @@ mlp_dropout = False
 vgg_lr_mult = 1.
 
 # Data Params
-data_folder = './exp-referit/data/train_batch_cls_crop/'
-data_prefix = 'referit_train_cls_crop'
+# data_folder = './exp-referit/data/train_batch_cls_crop/'
+data_folder = './exp-referit/data/train_batch_cls/'
+data_prefix = 'referit_train_cls'
 
 # Snapshot Params
 snapshot = max_iter+2
@@ -80,8 +81,8 @@ if fix_convnet:
 else:
     train_var_list = [var for var in tf.trainable_variables()
                       if not var.name.startswith('vgg_local/conv')]
-for var in tf.trainable_variables():
-    print(var.name)
+# for var in tf.trainable_variables():
+    # print(var.name)
 print('Collecting variables to train:')
 for var in train_var_list: print('\t%s' % var.name)
 print('Done.')
@@ -111,6 +112,7 @@ reg_loss = loss.l2_regularization_loss(reg_var_list, weight_decay)
 total_loss = cls_loss + reg_loss
 
 def compute_accuracy(scores, labels):
+    print('hello im here')
     is_pos = (labels != 0)
     is_neg = np.logical_not(is_pos)
     num_all = labels.shape[0]
@@ -201,6 +203,9 @@ for n_iter in range(max_iter):
     im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
     label_val = batch['label_batch'].astype(np.float32).reshape(N,1)
 
+    print('label vals:')
+    print(label_val)
+
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
 
     # Forward and Backward pass
@@ -215,6 +220,7 @@ for n_iter in range(max_iter):
         % (n_iter, cls_loss_val, cls_loss_avg, lr_val))
 
     # Accuracy
+    # this ends up making a call to processing_tools.py, computation seems sound
     accuracy_all, accuracy_pos, accuracy_neg = segmodel.compute_accuracy(scores_val, label_val)
 
     if not math.isnan(accuracy_all):

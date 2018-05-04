@@ -24,3 +24,4 @@ checkpoint
 
 venv
 demo/demo_data/black_cat.png
+tSNE/*
