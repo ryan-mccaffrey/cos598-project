@@ -7,8 +7,8 @@ import tensorflow as tf
 import argparse
 
 from matplotlib import pyplot as plt
-from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from scipy import spatial
 
 from models import text_objseg_model as segmodel
 from models import vgg_net, lstm_net, processing_tools
@@ -25,7 +25,7 @@ pretrained_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
 plot_dir = 'tSNE'
 
 # Model Params
-T = 20
+T = 1
 N = 1
 num_vocab = 8803
 embed_dim = 1000
@@ -66,7 +66,7 @@ def main(args):
         spatial_batch = tf.placeholder(tf.float32, [N, 8])
 
         # Language feature (LSTM hidden state)
-        lstm_top = lstm_net.lstm_net(text_seq_batch, num_vocab, embed_dim, lstm_dim)
+        lstm_top = lstm_net.lstm_net_tsne(text_seq_batch, num_vocab, embed_dim, lstm_dim)
 
         # Local image feature
         fc8_crop = vgg_net.vgg_fc8(imcrop_batch, 'vgg_local', apply_dropout=False)
@@ -119,13 +119,15 @@ def main(args):
         # Pre-allocate arrays
         text_seq_val = np.zeros((T, N), dtype=np.int32)
         lstm_top_val = np.zeros((N, D_text))
+        embd_val = np.zeros((N, embed_dim))
         words = list(vocab_dict.keys())
-        vectors = list()
+        lstm_vectors = list()
+        embd_vectors = list()
 
         print("Unique words in vocabulary:", len(words))
         count = 0
 
-        # extract LSTM feature vectors per word
+        # extract LSTM feature lstm_vectors per word
         for word in words: 
             count += 1
             if count % 100 == 0: print("%d out of %d words processed" % (count, len(words)))
@@ -134,38 +136,63 @@ def main(args):
             text_seq = text_processing.preprocess_sentence(word, vocab_dict, T)
             text_seq_val[:, 0] = text_seq
 
-            # Extract language feature
-            lstm_top_val[...] = sess.run(lstm_top, feed_dict={text_seq_batch:text_seq_val})
+            # Extract LSTM language feature and word embedding vector
+            lstm_top_val[...], embd_val[...]  = sess.run(lstm_top, feed_dict={text_seq_batch:text_seq_val})
             temp = np.squeeze(np.transpose(lstm_top_val))
-            # print(np.shape(temp)); exit()
-            vectors.append(temp)
+            lstm_vectors.append(temp)
+            temp = np.squeeze(np.transpose(embd_val))
+            embd_vectors.append(temp)
 
-            if count == 100: break
+            # if count == 100: break
 
-        # Save TSNE vectors for easy recovery
+        # Save TSNE lstm_vectors for easy recovery
         backup = args.savefile + "_TSNE_backup.npz"
-        np.savez(os.path.join(plot_dir, backup), words=words, vectors=vectors)
+        np.savez(os.path.join(plot_dir, backup), words=words, 
+                 lstm_vectors=lstm_vectors, embd_vectors=embd_vectors)
 
     else:
-        # Load saved vectors
+        # Load saved lstm_vectors
         npzfile = np.load(os.path.join(plot_dir, args.checkpoint))
         words = npzfile['words']
-        vectors = npzfile['vectors'] 
+        lstm_vectors = npzfile['lstm_vectors']
+        embd_vectors = npzfile['embd_vectors'] 
 
-    # Perform PCA
-    X_embedded = TSNE(n_components=2).fit_transform(vectors)
-    plot_with_labels(X_embedded, words[:len(vectors)], args.savefile+"_TSNE_plot.png")
-      
+    if args.k_nearest <= 0:
+        # Perform tSNE on LSTM vectors
+        X_embedded = TSNE(n_components=2).fit_transform(lstm_vectors)
+        plot_with_labels(X_embedded, words[:len(lstm_vectors)], args.savefile+"_TSNE_lstm.png")
+        
+        # Perform tSNE on word embeddings
+        X_embedded = TSNE(n_components=2).fit_transform(embd_vectors)
+        plot_with_labels(X_embedded, words[:len(embd_vectors)], args.savefile+"_TSNE_embd.png")
+    else:
+        # Setup KDTree algorithm for nearest neighbors
+        tree = spatial.KDTree(embd_vectors)
+        with open("testfile.txt","w") as file:
+            file.write("")
+
+        # Find k nearest neighbors for every word.
+        for vec_index in range(len(embd_vectors)):
+            dist, indxs = tree.query(embd_vectors[vec_index],k=args.k_nearest)
+            results_str = words[vec_index] + ":"
+            for i in indxs:
+                results_str = results_str + " " + words[i]  
+            with open("testfile.txt","a") as file:
+                file.write(results_str + "\n")
 
 '''
-Sample execution: 
+Sample tSNE execution: 
 python exp-referit/vocab_lstm_pca.py cls_crop -o cls_crop_SNE_backup.npz
+
+Sample k-nearest execution:
+python exp-referit/vocab_lstm_pca.py cls_crop 5 -o cls_crop_SNE_backup.npz
 '''
-DESCRIPTION = """Perform PCA on LSTM feature representation on each word in the vocabulaty."""
+DESCRIPTION = """Language vector analysis suite: tSNE and k-nearest."""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument('savefile', help='Prefix of file to save the final plot in.') 
-    parser.add_argument('-o', '--checkpoint', nargs='?', default='', help='Checkpointed vectors npz file.')  
+    parser.add_argument('k_nearest', type=int, nargs='?', default=-1)
+    parser.add_argument('-o', '--checkpoint', nargs='?', default='', help='Checkpointed lstm_vectors npz file.')  
     args = parser.parse_args()
     main(args)
