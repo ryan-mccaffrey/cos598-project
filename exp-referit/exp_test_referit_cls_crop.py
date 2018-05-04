@@ -112,7 +112,10 @@ def main(args):
     testing_samples_neg = []
     num_imcrop = len(imcrop_list)
 
+    # print mode
     print("Crops - True | Full Images - False:", args.crops)
+    print("All crops per batch - True | First crop per batch - False:", args.multicrop)
+
     if args.crops:
         # Gather a testing example per image crop.
         for imname in imlist:
@@ -198,7 +201,6 @@ def main(args):
     lstm_top_val = np.zeros((N, D_text))
     label_val = np.zeros((N, 1), dtype=np.bool)
 
-    print(num_batch * N, "batches collected.")
     correct_predictions = 0
     total_predictions = 0
 
@@ -208,7 +210,7 @@ def main(args):
         batch_end = (n_batch+1) * N
 
         # load and preprocess first image per batch
-        first_imname = shuffled_testing_samples[0][0]
+        first_imname = shuffled_testing_samples[max(batch_begin-1, 0)][0]
         first_im = skimage.io.imread(image_dir + first_imname)
         first_imcrop = skimage.img_as_ubyte(skimage.transform.resize(first_im, [224, 224]))
 
@@ -297,7 +299,7 @@ DESCRIPTION = """Performance evaluation suite for cls_crop model."""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=DESCRIPTION)
-    parser.add_argument('GPU_ID', help='GU_ID; if single-GPU, enter 0.')
+    parser.add_argument('GPU_ID', help='GPU_ID; if single-GPU, enter 0.')
     parser.add_argument('--crops', dest='crops', action='store_true')
     parser.add_argument('--full', dest='crops', action='store_false')
     parser.add_argument('--multiple', dest='multicrop', action='store_true')
