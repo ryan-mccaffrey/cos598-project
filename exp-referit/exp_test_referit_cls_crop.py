@@ -44,13 +44,26 @@ D_text = lstm_dim
 
 neg_iou = 1e-6
 
-F = 1
+################################################################################
+# Evaluation method
+################################################################################
 
 def main(args):
 
+    ################################################################################
+    # Validate input arguments
+    ################################################################################    
+    assert not (args.concat and args.crops), "Cannot test concatenated labels on image crops."
+    assert not (args.concat and (not args.multicrop)), "Cannot test concatenated labels on single image crop per batch."
+
     # Initialize GPU
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.GPU_ID
-    
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.GPU_ID    
+
+    # print mode
+    print()
+    print("Crops - True | Full Images - False:", args.crops)
+    print("All crops per batch - True | First crop per batch - False:", args.multicrop)
+    print("Concatenated captions - True | Simple captions - False:", args.concat)
     ################################################################################
     # Evaluation network
     ################################################################################
@@ -112,10 +125,6 @@ def main(args):
     testing_samples_neg = []
     num_imcrop = len(imcrop_list)
 
-    # print mode
-    print("Crops - True | Full Images - False:", args.crops)
-    print("All crops per batch - True | First crop per batch - False:", args.multicrop)
-
     if args.crops:
         # Gather a testing example per image crop.
         for imname in imlist:
@@ -154,15 +163,48 @@ def main(args):
 
             # Image
             imname = imcrop_name.split('_', 1)[0] + '.jpg'
-            for description in query_dict[imcrop_name]:
-                # append F times to match num of false samples
-                for i in range(F):
-                    testing_samples_pos.append((imname, description, 1))
+            if args.concat:
+                # append two positive captions; one with itself if only one present 
+                if len(query_dict[imcrop_name]) >= 2:
+                    pos_desc = query_dict[imcrop_name][0] +  ' and ' + query_dict[imcrop_name][1]
+                    testing_samples_pos.append((imname, pos_desc, 1))
+                else: 
+                    pos_desc = query_dict[imcrop_name][0] +  ' and ' + query_dict[imcrop_name][0]
+                    testing_samples_pos.append((imname, pos_desc, 1))
+                   
+                # form negative examples by choosing random image 
+                # that is not the current image, get its descriptions,
+                # and choose one at random.
+                false_idx = n_imcrop
+                while false_idx == n_imcrop: false_idx = randint(0, num_imcrop-1)
+                descriptions = query_dict[imcrop_list[false_idx]]
+                desc_idx = randint(0, len(descriptions)-1)
+                neg_desc1 = descriptions[desc_idx]
 
-                # generate F false samples for each positive sample
-                for i in range(F):
-                    # Choose random image that is not current image, get its descriptions,
-                    # and choose one at random
+                false_idx = n_imcrop
+                while false_idx == n_imcrop: false_idx = randint(0, num_imcrop-1)
+                descriptions = query_dict[imcrop_list[false_idx]]
+                desc_idx = randint(0, len(descriptions)-1)
+                neg_desc2 = descriptions[desc_idx]
+
+                # negative example: append two negative captions
+                neg_desc = neg_desc1 + ' and ' + neg_desc2                
+                testing_samples_neg.append((imname, neg_desc, 0))
+
+                # negative example: append one negative and one positive example
+                neg_desc = neg_desc1 + ' and ' + query_dict[imcrop_name][0]               
+                testing_samples_neg.append((imname, neg_desc, 0))
+                neg_desc = query_dict[imcrop_name][0] + ' and ' + neg_desc1          
+                testing_samples_neg.append((imname, neg_desc, 0))
+
+            else:
+                for description in query_dict[imcrop_name]:
+                    # append one positive sample per description
+                    testing_samples_pos.append((imname, description, 1))
+                   
+                    # form one negative example by choosing random image 
+                    # that is not the current image, get its descriptions,
+                    # and choose one at random.
                     false_idx = n_imcrop
                     while false_idx == n_imcrop: false_idx = randint(0, num_imcrop-1)
                     descriptions = query_dict[imcrop_list[false_idx]]
@@ -292,8 +334,10 @@ def main(args):
 
 '''
 Sample execution: 
-python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --crops --multiple
-Pass --full as a second argument for full images.
+python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --crops --multiple --simple
+--full: Full Images  vs --crops: Bounding Box Crops
+--multiple: Mutliple images per batch vs --single: Singe image per batch
+--concat: Concatenated labels vs --simple: Simple labels
 '''
 DESCRIPTION = """Performance evaluation suite for cls_crop model."""
 
@@ -304,6 +348,8 @@ if __name__ == '__main__':
     parser.add_argument('--full', dest='crops', action='store_false')
     parser.add_argument('--multiple', dest='multicrop', action='store_true')
     parser.add_argument('--single', dest='multicrop', action='store_false')
+    parser.add_argument('--concat', dest='concat', action='store_true')
+    parser.add_argument('--simple', dest='concat', action='store_false')
     args = parser.parse_args()
     main(args)
 
