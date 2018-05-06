@@ -236,7 +236,7 @@ for n_iter in range(max_iter):
     #    snapshot_saver.save(sess, snapshot_file % (n_iter+1))
     #    print('snapshot saved to ' + snapshot_file % (n_iter+1))
 
-snapshot_saver.save(sess, snapshot_file % 0)
-print('snapshot saved to ' + snapshot_file % 0)
+snapshot_saver.save(sess, snapshot_file % max_iter)
+print('snapshot saved to ' + snapshot_file % max_iter)
 print('Optimization done.')
 sess.close()

@@ -44,7 +44,28 @@ F = 1
 coco = COCO(query_file)
 coco_captions = COCO(caption_file)
 imgid_list = coco.getImgIds()
-vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+# vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+
+filename = './exp-referit/data/glove.6B.50d.txt'
+def loadGloVe(filename):
+    vocab = []
+    embd = []
+    file = open(filename,'r')
+    for line in file.readlines():
+        row = line.strip().split(' ')
+        vocab.append(row[0])
+        embd.append(row[1:])
+    print('Loaded GloVe!')
+    file.close()
+    return vocab,embd
+vocab,embd = loadGloVe(filename)
+vocab_size = len(vocab)
+embedding_dim = len(embd[0])
+embedding = np.asarray(embd)
+embedding.append(np.zeros(embedding_dim))
+vocab.append("<pad>")
+vocab_dict = dict()
+for i in range(len(vocab)): vocab_dict[vocab[i]] = embedding[i]
 
 ################################################################################
 # Collect training samples

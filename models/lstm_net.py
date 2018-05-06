@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
+import numpy as np
 
 from util.rnn import lstm_layer as lstm
 
@@ -9,6 +10,19 @@ def lstm_net(text_seq_batch, num_vocab, embed_dim, lstm_dim):
     # this has to be done on CPU currently
     with tf.variable_scope('word_embedding'), tf.device("/cpu:0"):
         embedding_mat = tf.get_variable("embedding", [num_vocab, embed_dim])
+        # text_seq has shape [T, N] and embedded_seq has shape [T, N, D].
+        embedded_seq = tf.nn.embedding_lookup(embedding_mat, text_seq_batch)
+
+    lstm_top = lstm('lstm_lang', embedded_seq, None, output_dim=lstm_dim,
+                    num_layers=1, forget_bias=1.0, apply_dropout=False,
+                    concat_output=False)[-1]
+    return lstm_top
+
+def lstm_net_glove(text_seq_batch, num_vocab, embed_dim, lstm_dim):     
+    # Initialize embedding layer
+    with tf.variable_scope('word_embedding'), tf.device("/cpu:0"):
+        embedding_mat = tf.Variable(tf.constant(0.0, shape=[vocab_size, embedding_dim]),
+                                    trainable=False, name="embedding")
         # text_seq has shape [T, N] and embedded_seq has shape [T, N, D].
         embedded_seq = tf.nn.embedding_lookup(embedding_mat, text_seq_batch)
 

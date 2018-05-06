@@ -7,6 +7,7 @@
 *~
 *.swp
 _mask.c*
+_mask.so
 
 exp-*/data/*
 exp-*/log/*
