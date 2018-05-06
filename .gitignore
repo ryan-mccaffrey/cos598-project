@@ -6,6 +6,7 @@
 *-checkpoint.ipynb
 *~
 *.swp
+_mask.c*
 
 exp-*/data/*
 exp-*/log/*

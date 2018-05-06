@@ -39,9 +39,6 @@ lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
 
-# 5 epochs per batch; 6500 batches
-max_iter = 7500
-
 fix_convnet = False #True
 vgg_dropout = False
 mlp_dropout = False
@@ -49,12 +46,16 @@ vgg_lr_mult = 1.
 
 # Data Params
 # data_folder = './exp-referit/data/train_batch_cls_crop/'
-data_folder = './exp-referit/data/train_batch_cls/'
-data_prefix = 'referit_train_cls'
+data_folder = './coco/data/train_batch_cls/'
+data_prefix = 'coco_train_cls'
+print(data_prefix)
 
 # Snapshot Params
-snapshot = max_iter+2
+#snapshot = max_iter+2
 snapshot_file = './exp-referit/tfmodel/referit_fc8_cls_crop_iter_%d.tfmodel'
+
+# 10 epochs per batch; 6500 batches
+max_iter = 17000
 
 ################################################################################
 # The model
@@ -202,10 +203,6 @@ for n_iter in range(max_iter):
     text_seq_val = batch['text_seq_batch']
     im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
     label_val = batch['label_batch'].astype(np.float32).reshape(N,1)
-
-    print('label vals:')
-    print(label_val)
-
     loss_mult_val = label_val * (pos_loss_mult - neg_loss_mult) + neg_loss_mult
 
     # Forward and Backward pass
@@ -235,9 +232,9 @@ for n_iter in range(max_iter):
           % (n_iter, avg_accuracy_all, avg_accuracy_pos, avg_accuracy_neg))
 
     # Save snapshot
-    if (n_iter+1) % snapshot == 0 or (n_iter+1) == max_iter:
-        snapshot_saver.save(sess, snapshot_file % (n_iter+1))
-        print('snapshot saved to ' + snapshot_file % (n_iter+1))
+    #if (n_iter+1) % snapshot == 0 or (n_iter+1) == max_iter:
+    #    snapshot_saver.save(sess, snapshot_file % (n_iter+1))
+    #    print('snapshot saved to ' + snapshot_file % (n_iter+1))
 
 snapshot_saver.save(sess, snapshot_file % 0)
 print('snapshot saved to ' + snapshot_file % 0)
