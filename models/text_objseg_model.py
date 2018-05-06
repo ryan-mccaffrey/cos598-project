@@ -61,10 +61,10 @@ def text_objseg_cls(text_seq_batch, imcrop_batch, num_vocab, embed_dim,
     return mlp_l2
 
 def text_objseg_cls_glove(text_seq_batch, imcrop_batch, num_vocab, embed_dim,
-            lstm_dim, mlp_hidden_dims, vgg_dropout, mlp_dropout):
+                          lstm_dim, mlp_hidden_dims, vgg_dropout, mlp_dropout, embedding):
 
     # Language feature (LSTM hidden state)
-    feat_lang = lstm_net.lstm_net_glove(text_seq_batch, num_vocab, embed_dim, lstm_dim)
+    feat_lang = lstm_net.lstm_net_glove(text_seq_batch, embedding, lstm_dim)
     print(feat_lang.get_shape())
 
     # Local image feature

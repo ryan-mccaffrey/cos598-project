@@ -62,10 +62,10 @@ vocab,embd = loadGloVe(filename)
 vocab_size = len(vocab)
 embedding_dim = len(embd[0])
 embedding = np.asarray(embd)
-embedding.append(np.zeros(embedding_dim))
+embedding = np.vstack((embedding, np.zeros(embedding_dim)))
 vocab.append("<pad>")
 vocab_dict = dict()
-for i in range(len(vocab)): vocab_dict[vocab[i]] = embedding[i]
+for i in range(len(vocab)): vocab_dict[vocab[i]] = i
 
 ################################################################################
 # Collect training samples
@@ -137,7 +137,6 @@ for n_batch in range(num_batch):
             processed_im = processed_im[:, :, np.newaxis]
 
         text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-
         text_seq_batch[:, n_sample-batch_begin] = text_seq
         imcrop_batch[n_sample-batch_begin, ...] = processed_im
         label_batch[n_sample-batch_begin] = label

@@ -16,8 +16,8 @@ def sentence2vocab_indices(sentence, vocab_dict):
     # remove .
     if words[-1] == '.':
         words = words[:-1]
-    vocab_indices = [(vocab_dict[w] if w in vocab_dict )#else vocab_dict[UNK_IDENTIFIER])
-        for w in words]
+    for w in words:
+        vocab_indices = [vocab_dict[w] for w in words if w in vocab_dict]#else vocab_dict[UNK_IDENTIFIER])
     return vocab_indices
 
 PAD_IDENTIFIER = '<pad>'

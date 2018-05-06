@@ -22,13 +22,12 @@ def loadGloVe(filename):
     print('Loaded GloVe!')
     file.close()
     return vocab,embd
-vocab,embd = loadGloVe(filename)
+vocab, embd = loadGloVe(filename)
 vocab_size = len(vocab)
 embedding_dim = len(embd[0])
-embedding = np.asarray(embd)
-embedding.append(np.zeros(embedding_dim))
+embedding = np.asarray(embd, dtype=np.float32)
+embedding = tf.cast(tf.constant(np.vstack((embedding, np.zeros(embedding_dim)))),tf.float32)
 vocab.append("<pad>")
-
 ################################################################################
 # Parameters
 ################################################################################
@@ -74,7 +73,7 @@ print(data_prefix)
 snapshot_file = './exp-referit/tfmodel/'+sys.argv[2]+'_%d.tfmodel'
 
 # 10 epochs per batch; 6500 batches
-max_iter = 7000
+max_iter = 500
 
 ################################################################################
 # The model
@@ -88,7 +87,7 @@ label_batch = tf.placeholder(tf.float32, [N, 1])
 # Outputs
 scores = segmodel.text_objseg_cls_glove(text_seq_batch, imcrop_batch, 
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
-    vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
+    vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout, embedding=embedding)
 
 ################################################################################
 # Collect trainable variables, regularized variables and learning rates
@@ -192,12 +191,12 @@ with tf.variable_scope('classifier', reuse=True):
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
 
 # Initialize embedding from glove
-with tf.variable_scope('word_embedding'):
-    embedding_mat = tf.get_variable("embedding")
-    embedding_init = tf.assign(embedding_mat, embedding)
-print(embedding_mat)
+#with tf.variable_scope('word_embedding'):
+#    embedding_mat = tf.get_variable("embedding")
+#    embedding_init = tf.assign(embedding_mat, embedding)
+#print(embedding_mat)
 
-init_ops += [init_mlp_l1, init_mlp_l2, embedding_init]
+init_ops += [init_mlp_l1, init_mlp_l2]#, embedding_init]
 processed_params.close()
 
 print("Parameters initialized.")
@@ -213,7 +212,7 @@ sess.run(tf.global_variables_initializer())
 sess.run(tf.group(*init_ops))
 
 print("Data loaded.")
-exit()
+
 ################################################################################
 # Optimization loop
 ################################################################################
@@ -262,7 +261,7 @@ for n_iter in range(max_iter):
     #    snapshot_saver.save(sess, snapshot_file % (n_iter+1))
     #    print('snapshot saved to ' + snapshot_file % (n_iter+1))
 
-snapshot_saver.save(sess, snapshot_file % 0)
-print('snapshot saved to ' + snapshot_file % 0)
+snapshot_saver.save(sess, snapshot_file % max_iter)
+print('snapshot saved to ' + snapshot_file % max_iter)
 print('Optimization done.')
 sess.close()
