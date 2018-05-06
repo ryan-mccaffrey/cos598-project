@@ -14,6 +14,7 @@ def sentence2vocab_indices(sentence, vocab_dict):
     words = SENTENCE_SPLIT_REGEX.split(sentence.strip())
     words = [w.lower() for w in words if len(w.strip()) > 0]
     # remove .
+    vocab_indices = []
     if words[-1] == '.':
         words = words[:-1]
     for w in words:

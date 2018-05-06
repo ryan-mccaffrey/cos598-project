@@ -59,11 +59,11 @@ def loadGloVe(filename):
     file.close()
     return vocab,embd
 vocab,embd = loadGloVe(filename)
-vocab_size = len(vocab)
 embedding_dim = len(embd[0])
 embedding = np.asarray(embd)
 embedding = np.vstack((embedding, np.zeros(embedding_dim)))
 vocab.append("<pad>")
+vocab_size = len(vocab)
 vocab_dict = dict()
 for i in range(len(vocab)): vocab_dict[vocab[i]] = i
 

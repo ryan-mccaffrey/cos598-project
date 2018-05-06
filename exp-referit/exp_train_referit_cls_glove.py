@@ -23,11 +23,11 @@ def loadGloVe(filename):
     file.close()
     return vocab,embd
 vocab, embd = loadGloVe(filename)
-vocab_size = len(vocab)
 embedding_dim = len(embd[0])
 embedding = np.asarray(embd, dtype=np.float32)
 embedding = tf.cast(tf.constant(np.vstack((embedding, np.zeros(embedding_dim)))),tf.float32)
 vocab.append("<pad>")
+vocab_size = len(vocab)
 ################################################################################
 # Parameters
 ################################################################################
@@ -72,8 +72,8 @@ print(data_prefix)
 #snapshot = max_iter+2
 snapshot_file = './exp-referit/tfmodel/'+sys.argv[2]+'_%d.tfmodel'
 
-# 10 epochs per batch; 6500 batches
-max_iter = 500
+# 5 epochs per batch
+max_iter = 20000
 
 ################################################################################
 # The model
