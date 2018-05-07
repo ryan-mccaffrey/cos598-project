@@ -55,16 +55,11 @@ def loadGloVe(filename):
 
 # load glove
 vocab, embd = loadGloVe(glove)
+vocab.append("<pad>")
 
 # preprocess embedding matrix
 embedding_dim = len(embd[0])
 embedding = np.vstack((np.asarray(embd, dtype=np.float32), np.zeros(embedding_dim)))
-
-# preprocess the vocabulary
-vocab.append("<pad>")
-vocab_size = len(vocab)
-vocab_dict = dict()
-for i in range(len(vocab)): vocab_dict[vocab[i]] = i
 
 ################################################################################
 # Helper Functions
@@ -103,7 +98,11 @@ def vectorizeLearntEmbd(args):
             vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
             pretrained_model = './exp-referit/tfmodel/referit_fc8_det_iter_25000.tfmodel'
         else:
-            pretrained_model = './coco/tfmodel/glove_model_crop.tfmodel'
+            vocab_size = len(vocab)
+            embedding_dim = len(embd[0])
+            vocab_dict = dict()
+            for i in range(len(vocab)): vocab_dict[vocab[i]] = i
+            pretrained_model = './coco/tfmodel/cls_coco_glove_20000.tfmodel'
 
         # Inputs
         text_seq_batch = tf.placeholder(tf.int32, [T, N])
@@ -125,7 +124,7 @@ def vectorizeLearntEmbd(args):
             if count % 100 == 0: print("%d out of %d words processed" % (count, len(words)))
 
             # Preprocess word
-            text_seq = text_processing.preprocess_sentence("red", vocab_dict, T)
+            text_seq = text_processing.preprocess_sentence(word, vocab_dict, T)
             text_seq_val[:, 0] = text_seq
 
             # Extract LSTM language feature
@@ -202,10 +201,10 @@ def main(args):
 
 '''
 Sample tSNE execution: 
-python exp-referit/vocab_lstm_pca.py det --custom -o det_tSNE_backup.npz
+python vocab_lstm_pca.py cls --custom
 
 Sample k-nearest execution:
-python exp-referit/vocab_lstm_pca.py cls_crop 5 --custom -o cls_crop_tSNE_backup.npz
+python vocab_lstm_pca.py cls_crop 5 --custom -o cls_crop_tSNE_backup.npz
 '''
 DESCRIPTION = """Language vector analysis suite: tSNE and k-nearest."""
 
