@@ -30,6 +30,7 @@ caption_file = './coco/annotations/captions_val2017.json'
 
 # TODO: Change model name for coco
 pretrained_model = './exp-referit/tfmodel/cls_coco_glove_45000.tfmodel'
+print("Model:", pretrained_model)
 
 # Model Params
 T = 20
@@ -128,8 +129,8 @@ def main(args):
     ################################################################################
 
     coco = COCO(query_file)
-	coco_captions = COCO(caption_file)
-	imgid_list = coco.getImgIds()
+    coco_captions = COCO(caption_file)
+    imgid_list = coco.getImgIds()
 
     # query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
     # bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
@@ -194,8 +195,8 @@ def main(args):
         img_id = imgid_list[n_imcrop]
 
         # get the decriptions of the image
-    	caption_ids = coco_captions.getAnnIds(imgIds=img_id)
-    	captions = [x['caption'].strip() for x in coco_captions.loadAnns(caption_ids)]
+        caption_ids = coco_captions.getAnnIds(imgIds=img_id)
+        captions = [x['caption'].strip() for x in coco_captions.loadAnns(caption_ids)]
 
         if args.concat:
             # append two positive captions; one with itself if only one present 
@@ -249,8 +250,8 @@ def main(args):
                 false_idx = n_imcrop
                 while false_idx == n_imcrop: false_idx = randint(0, num_imcrop-1)
                 desc_ids = coco_captions.getAnnIds(imgid_list[false_idx])
-            	desc_idx = randint(0, len(desc_ids)-1)
-            	false_cap = coco_captions.loadAnns(desc_ids[desc_idx])[0]['caption'].strip()
+                desc_idx = randint(0, len(desc_ids)-1)
+                false_cap = coco_captions.loadAnns(desc_ids[desc_idx])[0]['caption'].strip()
 
                 testing_samples_neg.append((img_id, false_cap, 0))
 
@@ -383,7 +384,7 @@ def main(args):
 
 '''
 Sample execution: 
-python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --full --multiple --simple
+python exp-referit/exp_test_coco_cls.py $GPU_ID --full --multiple --simple
 --full: Full Images  vs --crops: Bounding Box Crops
 --multiple: Mutliple images per batch vs --single: Singe image per batch
 --concat: Concatenated labels vs --simple: Simple labels
