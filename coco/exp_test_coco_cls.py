@@ -28,17 +28,12 @@ caption_file = './coco/annotations/captions_val2017.json'
 # bbox_proposal_dir = './exp-referit/data/referit_edgeboxes_top100/'
 # bbox_file = './exp-referit/data/referit_bbox.json'
 
-# still using referit vocab
-vocab_file = './exp-referit/data/vocabulary_referit.txt'
-
 # TODO: Change model name for coco
-pretrained_model = './exp-referit/tfmodel/coco_fc8_cls_crop_iter_0.tfmodel'
+pretrained_model = './exp-referit/tfmodel/cls_coco_glove_45000.tfmodel'
 
 # Model Params
 T = 20
 N = 100
-num_vocab = 8803
-embed_dim = 1000
 lstm_dim = 1000
 mlp_hidden_dims = 500
 
@@ -46,6 +41,31 @@ D_im = 1000
 D_text = lstm_dim
 
 neg_iou = 1e-6
+
+################################################################################
+# Load vocabulary
+################################################################################
+
+filename = './exp-referit/data/glove.6B.50d.txt'
+def loadGloVe(filename):
+    vocab = []
+    embd = []
+    file = open(filename,'r')
+    for line in file.readlines():
+        row = line.strip().split(' ')
+        vocab.append(row[0])
+        embd.append(row[1:])
+    print('Loaded GloVe!')
+    file.close()
+    return vocab,embd
+vocab,embd = loadGloVe(filename)
+vocab.append("<pad>")
+vocab_dict = dict()
+for i in range(len(vocab)): vocab_dict[vocab[i]] = i
+
+# Vocabulary-related network parameters
+num_vocab = len(vocab)
+embed_dim = len(embd[0])
 
 ################################################################################
 # Evaluation method
@@ -111,20 +131,20 @@ def main(args):
 	coco_captions = COCO(caption_file)
 	imgid_list = coco.getImgIds()
 
-    query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
-    bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
-    imcrop_dict = json.load(open(imcrop_file)) # "7023.jpg":["7023_3","7023_7","7023_1","7023_6",
-                                               #             "7023_5","7023_2","7023_4"]
-    imsize_dict = json.load(open(imsize_file)) # "7023.jpg":[480,360]
-    imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
-    vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
-    imcrop_list = list(query_dict.keys())
+    # query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
+    # bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
+    # imcrop_dict = json.load(open(imcrop_file)) # "7023.jpg":["7023_3","7023_7","7023_1","7023_6",
+    #                                            #             "7023_5","7023_2","7023_4"]
+    # imsize_dict = json.load(open(imsize_file)) # "7023.jpg":[480,360]
+    # imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
+    # vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+    # imcrop_list = list(query_dict.keys())
 
-    # Object proposals
-    bbox_proposal_dict = {}
-    for imname in imlist:
-        bboxes = np.loadtxt(bbox_proposal_dir + imname[:-4] + '.txt').astype(int).reshape((-1, 4))
-        bbox_proposal_dict[imname] = bboxes
+    # # Object proposals
+    # bbox_proposal_dict = {}
+    # for imname in imlist:
+    #     bboxes = np.loadtxt(bbox_proposal_dir + imname[:-4] + '.txt').astype(int).reshape((-1, 4))
+    #     bbox_proposal_dict[imname] = bboxes
 
     ################################################################################
     # Load testing data
@@ -278,8 +298,8 @@ def main(args):
         # load and preprocess first image per batch
         # TODO: Why max of (batch_begin-1, 0)? Doesn't that pick the image right before
         # the start of the batch?
-        # first_imname = shuffled_testing_samples[max(batch_begin-1, 0)][0]
-        first_img_id = shuffled_testing_samples[batch_begin][0]
+        #first_imname = shuffled_testing_samples[max(batch_begin-1, 0)][0]
+        first_img_id = shuffled_testing_samples[max(batch_begin-1, 0)][0]
         first_imname = coco.loadImgs(first_img_id)[0]['coco_url']
         first_im = skimage.io.imread(first_imname)
         first_imcrop = skimage.img_as_ubyte(skimage.transform.resize(first_im, [224, 224]))
@@ -348,7 +368,6 @@ def main(args):
                 fc8_crop_batch:fc8_crop_val
             })
         scores_val = scores_val[:batch_end-batch_begin+1, ...].reshape(-1)
-        #print(sum(scores_val>0))
         
         # Evaluate on bounding labels
         for indx in range(len(scores_val)):
@@ -364,7 +383,7 @@ def main(args):
 
 '''
 Sample execution: 
-python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --crops --multiple --simple
+python exp-referit/exp_test_referit_cls_crop.py $GPU_ID --full --multiple --simple
 --full: Full Images  vs --crops: Bounding Box Crops
 --multiple: Mutliple images per batch vs --single: Singe image per batch
 --concat: Concatenated labels vs --simple: Simple labels
