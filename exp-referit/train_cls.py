@@ -10,24 +10,6 @@ from models import text_objseg_model as segmodel
 from util import data_reader
 from util import loss
 
-filename = './exp-referit/data/glove.6B.50d.txt'
-def loadGloVe(filename):
-    vocab = []
-    embd = []
-    file = open(filename,'r')
-    for line in file.readlines():
-        row = line.strip().split(' ')
-        vocab.append(row[0])
-        embd.append(row[1:])
-    print('Loaded GloVe!')
-    file.close()
-    return vocab,embd
-vocab, embd = loadGloVe(filename)
-embedding_dim = len(embd[0])
-embedding = np.asarray(embd, dtype=np.float32)
-embedding = tf.cast(tf.constant(np.vstack((embedding, np.zeros(embedding_dim)))),tf.float32)
-vocab.append("<pad>")
-vocab_size = len(vocab)
 ################################################################################
 # Parameters
 ################################################################################
@@ -37,8 +19,8 @@ T = 20
 N = 10
 input_H = 224
 input_W = 224
-num_vocab = vocab_size #8803
-embed_dim = embedding_dim #1000
+num_vocab = 8803
+embed_dim = 50 #1000
 lstm_dim = 1000
 mlp_hidden_dims = 500
 
@@ -63,7 +45,6 @@ mlp_dropout = False
 vgg_lr_mult = 1.
 
 # Data Params
-# data_folder = './exp-referit/data/train_batch_cls_crop/'
 data_folder = './coco/data/train_batch_cls/'
 data_prefix = 'coco_train_cls'
 print(data_prefix)
@@ -73,7 +54,7 @@ print(data_prefix)
 snapshot_file = './exp-referit/tfmodel/'+sys.argv[2]+'_%d.tfmodel'
 
 # 5 epochs per batch
-max_iter = 20000
+max_iter = 17000
 
 ################################################################################
 # The model
@@ -85,9 +66,9 @@ imcrop_batch = tf.placeholder(tf.float32, [N, input_H, input_W, 3])
 label_batch = tf.placeholder(tf.float32, [N, 1])
 
 # Outputs
-scores = segmodel.text_objseg_cls_glove(text_seq_batch, imcrop_batch, 
+scores = segmodel.text_objseg_cls(text_seq_batch, imcrop_batch, 
     num_vocab, embed_dim, lstm_dim, mlp_hidden_dims,
-    vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout, embedding=embedding)
+    vgg_dropout=vgg_dropout, mlp_dropout=mlp_dropout)
 
 ################################################################################
 # Collect trainable variables, regularized variables and learning rates
@@ -100,8 +81,7 @@ if fix_convnet:
 else:
     train_var_list = [var for var in tf.trainable_variables()
                       if not var.name.startswith('vgg_local/conv')]
-# for var in tf.trainable_variables():
-    # print(var.name)
+
 print('Collecting variables to train:')
 for var in train_var_list: print('\t%s' % var.name)
 print('Done.')
@@ -190,13 +170,7 @@ with tf.variable_scope('classifier', reuse=True):
     init_mlp_l2 = tf.assign(mlp_l2, np.random.normal(
         0, mlp_l2_std, mlp_l2.get_shape().as_list()).astype(np.float32))
 
-# Initialize embedding from glove
-#with tf.variable_scope('word_embedding'):
-#    embedding_mat = tf.get_variable("embedding")
-#    embedding_init = tf.assign(embedding_mat, embedding)
-#print(embedding_mat)
-
-init_ops += [init_mlp_l1, init_mlp_l2]#, embedding_init]
+init_ops += [init_mlp_l1, init_mlp_l2]
 processed_params.close()
 
 print("Parameters initialized.")
@@ -212,7 +186,6 @@ sess.run(tf.global_variables_initializer())
 sess.run(tf.group(*init_ops))
 
 print("Data loaded.")
-
 ################################################################################
 # Optimization loop
 ################################################################################

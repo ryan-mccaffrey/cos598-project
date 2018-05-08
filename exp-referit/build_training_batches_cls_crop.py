@@ -32,8 +32,8 @@ neg_iou = 1e-6
 neg_to_pos_ratio = 1.0
 
 # Model Param
-N = 50
 T = 20
+N = 50
 
 ################################################################################
 # Load annotations and bounding box proposals

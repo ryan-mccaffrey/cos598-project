@@ -4,6 +4,7 @@ import sys; sys.path.append('./coco')
 
 import numpy as np
 import os
+import sys
 import json
 import skimage
 import skimage.io
@@ -14,6 +15,12 @@ from random import randint
 from util import im_processing, text_processing
 from util.io import load_referit_gt_mask as load_gt_mask
 
+''' 
+Sample execution:
+- GloVe vocabulary: python coco/build_training_batches_cls_coco.py glove
+- ReferIt vocabulary: python coco/build_training_batches_cls_coco.py referit
+'''
+
 ################################################################################
 # Parameters
 ################################################################################
@@ -21,8 +28,6 @@ from util.io import load_referit_gt_mask as load_gt_mask
 image_dir = './coco/images/'
 query_file = './coco/annotations/instances_train2017.json'
 caption_file = './coco/annotations/captions_train2017.json'
-# still using referit vocab file
-vocab_file = './exp-referit/data/vocabulary_referit.txt'
 
 # Saving directory
 data_folder = './coco/data/train_batch_cls/'
@@ -44,28 +49,36 @@ F = 1
 coco = COCO(query_file)
 coco_captions = COCO(caption_file)
 imgid_list = coco.getImgIds()
-# vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
 
-filename = './exp-referit/data/glove.6B.50d.txt'
-def loadGloVe(filename):
-    vocab = []
-    embd = []
-    file = open(filename,'r')
-    for line in file.readlines():
-        row = line.strip().split(' ')
-        vocab.append(row[0])
-        embd.append(row[1:])
-    print('Loaded GloVe!')
-    file.close()
-    return vocab,embd
-vocab,embd = loadGloVe(filename)
-embedding_dim = len(embd[0])
-embedding = np.asarray(embd)
-embedding = np.vstack((embedding, np.zeros(embedding_dim)))
-vocab.append("<pad>")
-vocab_size = len(vocab)
-vocab_dict = dict()
-for i in range(len(vocab)): vocab_dict[vocab[i]] = i
+################################################################################
+# Load vocabulary
+################################################################################
+
+if sys.argv[1] == "glove":
+    filename = './exp-referit/data/glove.6B.50d.txt'
+    def loadGloVe(filename):
+        vocab = []
+        embd = []
+        file = open(filename,'r')
+        for line in file.readlines():
+            row = line.strip().split(' ')
+            vocab.append(row[0])
+            embd.append(row[1:])
+        print('Loaded GloVe!')
+        file.close()
+        return vocab,embd
+    vocab,embd = loadGloVe(filename)
+    vocab.append("<pad>")
+    vocab_dict = dict()
+    for i in range(len(vocab)): vocab_dict[vocab[i]] = i
+
+else if sys.argv[1] == "referit":
+    # use referit vocab file; extremely similar to top 8803 words in COCO vocab
+    vocab_file = './exp-referit/data/vocabulary_referit.txt'
+    vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+
+else:
+    sys.exit("Invalid vocabulary chosen (argument 1).")
 
 ################################################################################
 # Collect training samples
@@ -108,8 +121,7 @@ shuffled_training_samples = [combined_samples[n] for n in shuffle_idx]
 print('total training instance number: %d' % len(shuffled_training_samples))
 
 # Create training batches
-# TODO: change from a static number to length if we want more batches
-num_batch = 4000 #len(shuffled_training_samples) // N
+num_batch = len(shuffled_training_samples) // N
 print('total batch number: %d' % num_batch)
 
 ################################################################################
