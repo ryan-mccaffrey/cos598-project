@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-import os
+import os, sys
 import json
 import skimage
 import skimage.io
@@ -11,6 +11,12 @@ from random import randint
 from util import im_processing, text_processing
 from util.io import load_referit_gt_mask as load_gt_mask
 
+''' 
+Sample execution:
+- GloVe vocabulary: python exp-referit/build_training_batches_cls_referit.py glove
+- ReferIt vocabulary: python exp-referit/build_training_batches_cls_referit.py referit
+'''
+
 ################################################################################
 # Parameters
 ################################################################################
@@ -18,7 +24,6 @@ from util.io import load_referit_gt_mask as load_gt_mask
 image_dir = './exp-referit/referit-dataset/images/'
 query_file = './exp-referit/data/referit_query_trainval.json'
 imsize_file = './exp-referit/data/referit_imsize.json'
-vocab_file = './exp-referit/data/vocabulary_referit.txt'
 
 # Saving directory
 data_folder = './exp-referit/data/train_batch_cls/'
@@ -31,7 +36,7 @@ input_H = 224
 input_W = 224
 
 # num false samples per positive sample
-F = 5
+F = 1
 
 ################################################################################
 # Load annotations
@@ -40,7 +45,36 @@ F = 5
 query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]                                          #             "7023_5","7023_2","7023_4"]
 imsize_dict = json.load(open(imsize_file)) #"7023.jpg":[480,360]
 imcrop_list = query_dict.keys()
-vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+
+################################################################################
+# Load vocabulary
+################################################################################
+
+if sys.argv[1] == "glove":
+    filename = './exp-referit/data/glove.6B.50d.txt'
+    def loadGloVe(filename):
+        vocab = []
+        embd = []
+        file = open(filename,'r')
+        for line in file.readlines():
+            row = line.strip().split(' ')
+            vocab.append(row[0])
+            embd.append(row[1:])
+        print('Loaded GloVe!')
+        file.close()
+        return vocab,embd
+    vocab,embd = loadGloVe(filename)
+    vocab.append("<pad>")
+    vocab_dict = dict()
+    for i in range(len(vocab)): vocab_dict[vocab[i]] = i
+
+elif sys.argv[1] == "referit":
+    # use referit vocab file; extremely similar to top 8803 words in COCO vocab
+    vocab_file = './exp-referit/data/vocabulary_referit.txt'
+    vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
+
+else:
+    sys.exit("Invalid vocabulary chosen (argument 1).")
 
 ################################################################################
 # Collect training samples

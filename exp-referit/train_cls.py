@@ -10,6 +10,12 @@ from models import text_objseg_model as segmodel
 from util import data_reader
 from util import loss
 
+''' 
+Sample execution:
+- COCO Dataset: python exp-referit/train_cls.py $GPU_ID cls_coco coco
+- ReferIt Dataset: python exp-referit/train_cls.py $GPU_ID cls_referit referit
+'''
+
 ################################################################################
 # Parameters
 ################################################################################
@@ -44,10 +50,16 @@ vgg_dropout = False
 mlp_dropout = False
 vgg_lr_mult = 1.
 
-# Data Params
-data_folder = './coco/data/train_batch_cls/'
-data_prefix = 'coco_train_cls'
-print(data_prefix)
+# Detremine dataset
+if sys.argv[3] == 'coco':
+    data_folder = './coco/data/train_batch_cls/'
+    data_prefix = 'coco_train_cls'
+elif sys.argv[3] == 'referit':
+    data_folder = './exp-referit/data/train_batch_cls/'
+    data_prefix = 'referit_train_cls'
+else:
+    sys.exit("Invalid dataset chosen (argument 3).")
+print("Model:", data_prefix)
 
 # Snapshot Params
 #snapshot = max_iter+2

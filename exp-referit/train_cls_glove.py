@@ -10,6 +10,12 @@ from models import text_objseg_model as segmodel
 from util import data_reader
 from util import loss
 
+''' 
+Sample execution:
+- COCO Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_coco_glove coco
+- ReferIt Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_referit_glove referit
+'''
+
 ################################################################################
 # Load GloVe embedding
 ################################################################################
@@ -42,8 +48,8 @@ T = 20
 N = 10
 input_H = 224
 input_W = 224
-num_vocab = vocab_size #8803
-embed_dim = embedding_dim #1000
+num_vocab = vocab_size
+embed_dim = embedding_dim
 lstm_dim = 1000
 mlp_hidden_dims = 500
 
@@ -67,10 +73,16 @@ vgg_dropout = False
 mlp_dropout = False
 vgg_lr_mult = 1.
 
-# Data Params
-data_folder = './coco/data/train_batch_cls/'
-data_prefix = 'coco_train_cls'
-print(data_prefix)
+# Detremine dataset
+if sys.argv[3] == 'coco':
+    data_folder = './coco/data/train_batch_cls/'
+    data_prefix = 'coco_train_cls'
+elif sys.argv[3] == 'referit':
+    data_folder = './exp-referit/data/train_batch_cls/'
+    data_prefix = 'referit_train_cls'
+else:
+    sys.exit("Invalid dataset chosen (argument 3).")
+print("Model:", data_prefix)
 
 # Snapshot Params
 #snapshot = max_iter+2
