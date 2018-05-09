@@ -12,7 +12,7 @@ from util import loss
 
 ''' 
 Sample execution:
-- COCO Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_coco_glove coco
+- COCO Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_coco_glove_plus coco
 - ReferIt Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_referit_glove referit
 '''
 
@@ -67,7 +67,7 @@ lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
 
-fix_convnet = False #True
+fix_convnet = False
 vgg_dropout = False
 mlp_dropout = False
 vgg_lr_mult = 1.

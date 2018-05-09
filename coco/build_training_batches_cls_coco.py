@@ -72,7 +72,7 @@ if sys.argv[1] == "glove":
     vocab_dict = dict()
     for i in range(len(vocab)): vocab_dict[vocab[i]] = i
 
-else if sys.argv[1] == "referit":
+elif sys.argv[1] == "referit":
     # use referit vocab file; extremely similar to top 8803 words in COCO vocab
     vocab_file = './exp-referit/data/vocabulary_referit.txt'
     vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)

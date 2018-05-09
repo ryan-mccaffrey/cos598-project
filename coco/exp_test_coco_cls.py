@@ -172,9 +172,9 @@ def main(args):
             testing_samples_neg.append((img_id, neg_desc, 0))
 
             # negative example: append one negative and one positive example
-            neg_desc = neg_desc1 + ' and ' + captions[rand_idx1].strip()              
-            testing_samples_neg.append((imname, neg_desc, 0))
-            neg_desc = captions[rand_idx1].strip() + ' and ' + neg_desc1          
+            neg_desc = neg_desc1 + ' and ' + captions[0].strip()              
+            testing_samples_neg.append((img_id, neg_desc, 0))
+            neg_desc = captions[0].strip() + ' and ' + neg_desc1          
             testing_samples_neg.append((img_id, neg_desc, 0))
 
         else:
