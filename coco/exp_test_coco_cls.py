@@ -183,9 +183,9 @@ def main(args):
             testing_samples_neg.append((img_id, neg_desc, 0))
 
             # negative example: append one negative and one positive example
-            neg_desc = neg_desc1 + ' and ' + query_dict[imcrop_name][0]               
+            neg_desc = neg_desc1 + ' and ' + captions[rand_idx1].strip()              
             testing_samples_neg.append((imname, neg_desc, 0))
-            neg_desc = query_dict[imcrop_name][0] + ' and ' + neg_desc1          
+            neg_desc = captions[rand_idx1].strip() + ' and ' + neg_desc1          
             testing_samples_neg.append((img_id, neg_desc, 0))
 
         else:
@@ -245,9 +245,7 @@ def main(args):
         batch_begin = n_batch * N
         batch_end = (n_batch+1) * N
 
-        # load and preprocess first image per batch
-        # TODO: Why max of (batch_begin-1, 0)? Doesn't that pick the image right before
-        # the start of the batch?
+        # load and preprocess last image from previous batch
         first_img_id = shuffled_testing_samples[max(batch_begin-1, 0)][0]
         first_imname = coco.loadImgs(first_img_id)[0]['coco_url']
         first_im = skimage.io.imread(first_imname)
@@ -263,7 +261,7 @@ def main(args):
 
                 # ignore grayscale images
                 if len(np.shape(im)) != 3: continue
-                
+
                 imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
             else:
                 imcrop = first_imcrop
