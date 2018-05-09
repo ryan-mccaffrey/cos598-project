@@ -29,8 +29,7 @@ caption_file = './coco/annotations/captions_val2017.json'
 # bbox_file = './exp-referit/data/referit_bbox.json'
 
 # TODO: Change model name for coco
-pretrained_model = './exp-referit/tfmodel/cls_coco_glove_45000.tfmodel'
-print("Model:", pretrained_model)
+pretrained_model = './exp-referit/tfmodel/cls_coco_glove_45000.tfmodel' #'./exp-referit/tfmodel/cls_referit_glove_18000.tfmodel'
 
 # Model Params
 T = 20
@@ -84,6 +83,7 @@ def main(args):
 
     # print mode
     print()
+    print("Model:", pretrained_model)
     print("All crops per batch - True | First crop per batch - False:", args.multicrop)
     print("Concatenated captions - True | Simple captions - False:", args.concat)
     print()
@@ -149,19 +149,8 @@ def main(args):
 
         if args.concat:
             # append two positive captions; one with itself if only one present 
-            # TODO: might just be better to choose 2 random pos captions either way?
-            rand_idx1 = randint(0, len(captions))
-            rand_idx2 = randint(0, len(captions))
-            pos_desc = '{} and {}'.format(captions[rand_idx1], captions[rand_idx2])
+            pos_desc = captions[0] +  ' and ' + captions[len(captions)-1] 
             testing_samples_pos.append((img_id, pos_desc, 1))
-
-            # OLD CONCAT CODE:
-            # if len(captions) >= 2:
-            #     pos_desc = captions[0] +  ' and ' + captions[1]
-            #     testing_samples_pos.append((img_id, pos_desc, 1))
-            # else: 
-            #     pos_desc = captions[0] +  ' and ' + captions[0]
-            #     testing_samples_pos.append((imname, pos_desc, 1))
                
             # form negative examples by choosing random image 
             # that is not the current image, get its descriptions,
@@ -208,7 +197,6 @@ def main(args):
     # Combine samples
     print('#pos=', len(testing_samples_pos))
     print('#neg=', len(testing_samples_neg))
-    print('Total img-captions pairs:', count)
 
     # TODO: Not exactly sure what your multicrop is testing here? Just removes the
     # positive examples from being tested? How is this useful?
@@ -250,6 +238,7 @@ def main(args):
         first_imname = coco.loadImgs(first_img_id)[0]['coco_url']
         first_im = skimage.io.imread(first_imname)
         first_imcrop = skimage.img_as_ubyte(skimage.transform.resize(first_im, [224, 224]))
+        if len(np.shape(first_im)) != 3: continue
 
         for n_sample in range(batch_begin, batch_end):
             img_id, description, label = shuffled_testing_samples[n_sample]
