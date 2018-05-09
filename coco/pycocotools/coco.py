@@ -53,11 +53,10 @@ import numpy as np
 import copy
 import itertools
 try:
-    from . import mask as maskUtils
+    import mask as maskUtils
 except ImportError:
-    from coco.pycocotools import mask as maskUtils
+    from pycocotools import mask as maskUtils
 
-import os
 from collections import defaultdict
 import sys
 PYTHON_VERSION = sys.version_info[0]
@@ -81,7 +80,7 @@ class COCO:
         """
         # load dataset
         self.dataset,self.anns,self.cats,self.imgs = dict(),dict(),dict(),dict()
-        self.imgToAnns, self.catToImgs = defaultdict(list), defaultdict(list)
+        self.imgToAnns, self.catToImgs, self.imgToCats = defaultdict(list), defaultdict(list), defaultdict(list)
         if not annotation_file == None:
             print('loading annotations into memory...')
             tic = time.time()
@@ -95,7 +94,7 @@ class COCO:
         # create index
         print('creating index...')
         anns, cats, imgs = {}, {}, {}
-        imgToAnns,catToImgs = defaultdict(list),defaultdict(list)
+        imgToAnns,catToImgs,imgToCats = defaultdict(list),defaultdict(list),defaultdict(list)
         if 'annotations' in self.dataset:
             for ann in self.dataset['annotations']:
                 imgToAnns[ann['image_id']].append(ann)
@@ -113,12 +112,16 @@ class COCO:
             for ann in self.dataset['annotations']:
                 catToImgs[ann['category_id']].append(ann['image_id'])
 
+                # create dict for image to categories
+                imgToCats[ann['image_id']].append(ann['category_id'])
+
         print('index created!')
 
         # create class members
         self.anns = anns
         self.imgToAnns = imgToAnns
         self.catToImgs = catToImgs
+        self.imgToCats = imgToCats
         self.imgs = imgs
         self.cats = cats
 
@@ -158,7 +161,7 @@ class COCO:
             ids = [ann['id'] for ann in anns]
         return ids
 
-    def getCatIds(self, catNms=[], supNms=[], catIds=[]):
+    def getCatIds(self, catNms=[], supNms=[], catIds=[], imgIds=[]):
         """
         filtering parameters. default skips that filter.
         :param catNms (str array)  : get cats for given cat names
@@ -169,8 +172,9 @@ class COCO:
         catNms = catNms if _isArrayLike(catNms) else [catNms]
         supNms = supNms if _isArrayLike(supNms) else [supNms]
         catIds = catIds if _isArrayLike(catIds) else [catIds]
+        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
 
-        if len(catNms) == len(supNms) == len(catIds) == 0:
+        if len(catNms) == len(supNms) == len(catIds) == len(imgIds) == 0:
             cats = self.dataset['categories']
         else:
             cats = self.dataset['categories']
@@ -178,6 +182,13 @@ class COCO:
             cats = cats if len(supNms) == 0 else [cat for cat in cats if cat['supercategory'] in supNms]
             cats = cats if len(catIds) == 0 else [cat for cat in cats if cat['id']            in catIds]
         ids = [cat['id'] for cat in cats]
+
+        if len(imgIds) != 0:
+            ids = set(ids)
+            for imgId in imgIds:
+                ids &= set(self.imgToCats[imgId])
+            ids = list(ids)
+
         return ids
 
     def getImgIds(self, imgIds=[], catIds=[]):

@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 import json
 import timeit
+import pickle
 import argparse
 
 from random import randint
@@ -25,6 +26,7 @@ from util import im_processing, text_processing, eval_tools
 image_dir = './coco/images/'
 query_file = './coco/annotations/instances_val2017.json'
 caption_file = './coco/annotations/captions_val2017.json'
+imgcat_pickle_file = './coco/annotations/image_to_category_val2017.pickle'
 # bbox_proposal_dir = './exp-referit/data/referit_edgeboxes_top100/'
 # bbox_file = './exp-referit/data/referit_bbox.json'
 
@@ -113,6 +115,7 @@ def main(args):
     coco = COCO(query_file)
     coco_captions = COCO(caption_file)
     imgid_list = coco.getImgIds()
+    catid_list = coco.getCatIds()
 
     query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
     bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
@@ -122,6 +125,11 @@ def main(args):
     imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
     vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
     imcrop_list = list(query_dict.keys())
+
+    # load img to cat dict if looking at img classes
+    # if args.classes:
+    #     with open(imgcat_pickle_file, 'rb') as f:
+    #         imgid_cat_dict = pickle.load(f)
 
     # Object proposals
     bbox_proposal_dict = {}
@@ -223,7 +231,18 @@ def main(args):
 
         # for appending image captions
         elif args.classes:
+            img_catids = coco.getCatIds(imgIds=img_id)
+            img_cat_names = [cat['name'] for cat in coco.loadCats(img_catids)]
+            for category in img_cat_names:
+                testing_samples_pos.append((img_id, category, 1))
 
+                # form one negative example by choosing random category that
+                # img is not in
+                false_catid = img_catids[0]
+                while false_catid in img_catids: 
+                    false_catid = catid_list[randint(0, len(catid_list)-1)]
+                false_cat_name = coco.loadCats(false_catid)[0]['name']
+                testing_samples_neg.append((img_id, false_cat_name, 0))
 
         else:
             for caption in captions:
