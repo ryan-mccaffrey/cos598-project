@@ -25,11 +25,9 @@ from util import im_processing, text_processing, eval_tools
 image_dir = './coco/images/'
 query_file = './coco/annotations/instances_val2017.json'
 caption_file = './coco/annotations/captions_val2017.json'
-# bbox_proposal_dir = './exp-referit/data/referit_edgeboxes_top100/'
-# bbox_file = './exp-referit/data/referit_bbox.json'
 
 # TODO: Change model name for coco
-pretrained_model = './exp-referit/tfmodel/cls_coco_glove_45000.tfmodel' #'./exp-referit/tfmodel/cls_referit_glove_18000.tfmodel'
+pretrained_model = './exp-referit/tfmodel/cls_coco_glove_plus_40000.tfmodel' #'./exp-referit/tfmodel/cls_referit_glove_18000.tfmodel'
 
 # Model Params
 T = 20
@@ -40,13 +38,11 @@ mlp_hidden_dims = 500
 D_im = 1000
 D_text = lstm_dim
 
-neg_iou = 1e-6
-
 ################################################################################
 # Load vocabulary
 ################################################################################
 
-filename = './exp-referit/data/glove.6B.50d.txt'
+filename = './exp-referit/data/glove.6B.300d.txt'
 def loadGloVe(filename):
     vocab = []
     embd = []
@@ -77,6 +73,8 @@ def main(args):
     # Validate input arguments
     ################################################################################    
     assert not (args.concat and (not args.multicrop)), "Cannot test concatenated labels on single image crop per batch."
+    assert not (args.classes and args.concat), "Cannot test concatenated labels when using image classes"
+    assert not (args.classes and (not args.multicrop)), "Cannot test on single image per batch when using image classes"
 
     # Initialize GPU
     os.environ['CUDA_VISIBLE_DEVICES'] = args.GPU_ID    
@@ -86,6 +84,7 @@ def main(args):
     print("Model:", pretrained_model)
     print("All crops per batch - True | First crop per batch - False:", args.multicrop)
     print("Concatenated captions - True | Simple captions - False:", args.concat)
+    print("Image Classes - True | Image Descriptions - False:", args.classes)
     print()
 
     ################################################################################
@@ -128,12 +127,12 @@ def main(args):
     coco = COCO(query_file)
     coco_captions = COCO(caption_file)
     imgid_list = coco.getImgIds()
+    catid_list = coco.getCatIds()
 
     ################################################################################
     # Load testing data
     ################################################################################
 
-    count = 0
     testing_samples_pos = []
     testing_samples_neg = []
     num_imcrop = len(imgid_list)
@@ -177,6 +176,21 @@ def main(args):
             neg_desc = captions[0].strip() + ' and ' + neg_desc1          
             testing_samples_neg.append((img_id, neg_desc, 0))
 
+         # for appending image captions
+        elif args.classes:
+            img_catids = coco.getCatIds(imgIds=img_id)
+            img_cat_names = [cat['name'] for cat in coco.loadCats(img_catids)]
+            for category in img_cat_names:
+                testing_samples_pos.append((img_id, category, 1))
+
+                # form one negative example by choosing random category that
+                # img is not in
+                false_catid = img_catids[0]
+                while false_catid in img_catids: 
+                    false_catid = catid_list[randint(0, len(catid_list)-1)]
+                false_cat_name = coco.loadCats(false_catid)[0]['name']
+                testing_samples_neg.append((img_id, false_cat_name, 0))
+
         else:
             for caption in captions:
                 # append one positive sample per description
@@ -205,14 +219,8 @@ def main(args):
     else:
         testing_samples = testing_samples_neg
 
-    # Merge and shuffle testing examples
-    np.random.seed(3)
-    perm_idx = np.random.permutation(len(testing_samples))
-    shuffled_testing_samples = [testing_samples[n] for n in perm_idx]
-    del testing_samples
-    print('#total testing examples=', len(shuffled_testing_samples))
-
-    num_batch = len(shuffled_testing_samples) // N
+    print('#total testing examples=', len(testing_samples))
+    num_batch = len(testing_samples) // N
     print('total batch number: %d' % num_batch)
 
     ################################################################################
@@ -228,30 +236,40 @@ def main(args):
     correct_predictions = 0
     total_predictions = 0
 
+    # optimization for faster image loading
+    last_img_id = -100
+    last_imcrop = None
+
     for n_batch in range(num_batch):
         print('batch %d / %d' % (n_batch+1, num_batch))
         batch_begin = n_batch * N
         batch_end = (n_batch+1) * N
 
         # load and preprocess last image from previous batch
-        first_img_id = shuffled_testing_samples[max(batch_begin-1, 0)][0]
+        first_img_id = testing_samples[max(batch_begin-1, 0)][0]
         first_imname = coco.loadImgs(first_img_id)[0]['coco_url']
         first_im = skimage.io.imread(first_imname)
         first_imcrop = skimage.img_as_ubyte(skimage.transform.resize(first_im, [224, 224]))
         if len(np.shape(first_im)) != 3: continue
 
         for n_sample in range(batch_begin, batch_end):
-            img_id, description, label = shuffled_testing_samples[n_sample]
+            img_id, description, label = testing_samples[n_sample]
 
             # Preprocess image and caption
             if args.multicrop:
-                imname = coco.loadImgs(img_id)[0]['coco_url']
-                im = skimage.io.imread(imname)
+                # Optimization: do not reload image if it is the same as the last one
+                if img_id==last_img_id:
+                    imcrop = last_imcrop
+                else:
+                    imname = coco.loadImgs(img_id)[0]['coco_url']
+                    im = skimage.io.imread(imname)
 
-                # ignore grayscale images
-                if len(np.shape(im)) != 3: continue
+                    # ignore grayscale images
+                    if len(np.shape(im)) != 3: continue
 
-                imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
+                    imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
+                    last_img_id = img_id
+                    last_imcrop = imcrop
             else:
                 imcrop = first_imcrop
             text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
@@ -290,19 +308,19 @@ def main(args):
 
 '''
 Sample execution: 
-python coco/exp_test_coco_cls.py $GPU_ID --multiple --simple
---multiple: Mutliple images per batch vs --single: Singe image per batch
---concat: Concatenated labels vs --simple: Simple labels
+python coco/exp_test_coco_cls.py $GPU_ID --multiple
+--multiple: Mutliple images per batch, else: Singe image per batch.
+--concat: Concatenated captions, else: Simple captions.
+--classes: Object classes as captions, else: Normal image captions.
 '''
-DESCRIPTION = """Performance evaluation suite for cls_crop model."""
+DESCRIPTION = """Performance evaluation suite for cls_glove model on the COCO validation set."""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument('GPU_ID', help='GPU_ID; if single-GPU, enter 0.')
     parser.add_argument('--multiple', dest='multicrop', action='store_true')
-    parser.add_argument('--single', dest='multicrop', action='store_false')
     parser.add_argument('--concat', dest='concat', action='store_true')
-    parser.add_argument('--simple', dest='concat', action='store_false')
+    parser.add_argument('--classes', dest='classes', action='store_true')
     args = parser.parse_args()
     main(args)
 
