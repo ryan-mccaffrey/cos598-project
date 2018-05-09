@@ -45,7 +45,6 @@ vocab_size = len(vocab)
 
 # Model Params
 T = 20
-N = 10
 input_H = 224
 input_W = 224
 num_vocab = vocab_size
@@ -77,9 +76,11 @@ vgg_lr_mult = 1.
 if sys.argv[3] == 'coco':
     data_folder = './coco/data/train_batch_cls/'
     data_prefix = 'coco_train_cls'
+    N = 10
 elif sys.argv[3] == 'referit':
     data_folder = './exp-referit/data/train_batch_cls/'
     data_prefix = 'referit_train_cls'
+    N = 50
 else:
     sys.exit("Invalid dataset chosen (argument 3).")
 print("Model:", data_prefix)

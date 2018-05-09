@@ -77,20 +77,17 @@ def main(args):
     ################################################################################
     # Validate input arguments
     ################################################################################    
-    assert not (args.concat and args.crops), "Cannot test concatenated labels on image crops."
     assert not (args.concat and (not args.multicrop)), "Cannot test concatenated labels on single image crop per batch."
-
-    # TODO: remove if allowing crops again
-    assert not args.crops, "Crops currently not supported"
 
     # Initialize GPU
     os.environ['CUDA_VISIBLE_DEVICES'] = args.GPU_ID    
 
     # print mode
     print()
-    print("Crops - True | Full Images - False:", args.crops)
     print("All crops per batch - True | First crop per batch - False:", args.multicrop)
     print("Concatenated captions - True | Simple captions - False:", args.concat)
+    print()
+
     ################################################################################
     # Evaluation network
     ################################################################################
@@ -132,21 +129,6 @@ def main(args):
     coco_captions = COCO(caption_file)
     imgid_list = coco.getImgIds()
 
-    # query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]
-    # bbox_dict = json.load(open(bbox_file))     # {"38685_1":[0,0,479,132]
-    # imcrop_dict = json.load(open(imcrop_file)) # "7023.jpg":["7023_3","7023_7","7023_1","7023_6",
-    #                                            #             "7023_5","7023_2","7023_4"]
-    # imsize_dict = json.load(open(imsize_file)) # "7023.jpg":[480,360]
-    # imlist = list({name.split('_', 1)[0] + '.jpg' for name in query_dict})
-    # vocab_dict = text_processing.load_vocab_dict_from_file(vocab_file)
-    # imcrop_list = list(query_dict.keys())
-
-    # # Object proposals
-    # bbox_proposal_dict = {}
-    # for imname in imlist:
-    #     bboxes = np.loadtxt(bbox_proposal_dir + imname[:-4] + '.txt').astype(int).reshape((-1, 4))
-    #     bbox_proposal_dict[imname] = bboxes
-
     ################################################################################
     # Load testing data
     ################################################################################
@@ -155,39 +137,6 @@ def main(args):
     testing_samples_pos = []
     testing_samples_neg = []
     num_imcrop = len(imgid_list)
-
-    # if args.crops:
-    #     # Gather a testing example per image crop.
-    #     for imname in imlist:
-    #         this_imcrop_names = imcrop_dict[imname]
-    #         imsize = imsize_dict[imname]
-    #         bbox_proposals = bbox_proposal_dict[imname]
-
-    #         # for each ground-truth annotation, use gt boxes as positive examples
-    #         # and proposal box with small iou as negative examples
-    #         for imcrop_name in this_imcrop_names:
-    #             if not imcrop_name in query_dict:
-    #                 continue
-    #             gt_bbox = np.array(bbox_dict[imcrop_name]).reshape((1, 4))
-    #             IoUs = eval_tools.compute_bbox_iou(bbox_proposals, gt_bbox)
-    #             pos_boxes = gt_bbox
-    #             neg_boxes = bbox_proposals[IoUs <  neg_iou, :]
-
-    #             # generate them per description; 
-    #             # ensure equal number of positive and negative examples
-    #             this_descriptions = query_dict[imcrop_name]
-    #             for description in this_descriptions:
-    #                 count += 1
-    #                 # Positive testing samples
-    #                 for n_pos in range(pos_boxes.shape[0]):
-    #                     sample = (imname, imsize, pos_boxes[n_pos], description, 1)
-    #                     testing_samples_pos.append(sample)
-    #                 # Negative testing samples
-    #                 for n_neg in range(min(neg_boxes.shape[0], pos_boxes.shape[0])):
-    #                     sample = (imname, imsize, neg_boxes[n_neg], description, 0)
-    #                     testing_samples_neg.append(sample)
-
-    # else:
         
     # Gather a testing example per full image.
     for n_imcrop in range(num_imcrop):
@@ -299,56 +248,26 @@ def main(args):
         # load and preprocess first image per batch
         # TODO: Why max of (batch_begin-1, 0)? Doesn't that pick the image right before
         # the start of the batch?
-        #first_imname = shuffled_testing_samples[max(batch_begin-1, 0)][0]
         first_img_id = shuffled_testing_samples[max(batch_begin-1, 0)][0]
         first_imname = coco.loadImgs(first_img_id)[0]['coco_url']
         first_im = skimage.io.imread(first_imname)
         first_imcrop = skimage.img_as_ubyte(skimage.transform.resize(first_im, [224, 224]))
 
         for n_sample in range(batch_begin, batch_end):
-            # TODO: implement for crops in future, if decide crops are useful.
-            if args.crops:
-                imname, imsize, sample_bbox, description, label = shuffled_testing_samples[n_sample]
-                im = skimage.io.imread(image_dir + imname)
-                xmin, ymin, xmax, ymax = sample_bbox
+            img_id, description, label = shuffled_testing_samples[n_sample]
 
-                if len(np.shape(im)) == 3:
-                    # grab bounding box from image
-                    if args.multicrop:
-                        imcrop = im[ymin:ymax+1, xmin:xmax+1, :]
-                        imcrop = skimage.img_as_ubyte(skimage.transform.resize(imcrop, [224, 224]))
-                    else:
-                        imcrop = first_imcrop
-                    text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-                else:
-                    # ignore grayscale images
-                    continue
-
-                # # Show Images
-                # print(description, label)
-                # fig=plt.figure()
-                # a = fig.add_subplot(1, 2, 1)
-                # plt.imshow(im)
-                # a = fig.add_subplot(1, 2, 2)
-                # plt.imshow(imcrop)
-                # plt.show()
-            else:
-                img_id, description, label = shuffled_testing_samples[n_sample]
+            # Preprocess image and caption
+            if args.multicrop:
                 imname = coco.loadImgs(img_id)[0]['coco_url']
                 im = skimage.io.imread(imname)
 
-                if len(np.shape(im)) == 3:
-                    if args.multicrop:
-                        imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
-                    else:
-                        imcrop = first_imcrop
-                    text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-                else:
-                    # ignore grayscale images
-                    # imcrop = np.zeros((224, 224, 3), dtype=np.float32)
-                    # text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
-                    # label = 0
-                    continue
+                # ignore grayscale images
+                if len(np.shape(im)) != 3: continue
+                
+                imcrop = skimage.img_as_ubyte(skimage.transform.resize(im, [224, 224]))
+            else:
+                imcrop = first_imcrop
+            text_seq = text_processing.preprocess_sentence(description, vocab_dict, T)
                 
             # Form batch
             idx = n_sample - batch_begin
@@ -379,13 +298,12 @@ def main(args):
         print(correct_predictions/total_predictions)
             
     print('Final results on the whole test set')
-    result_str = 'recall = %f\n'.format(float(correct_predictions)/total_predictions)
+    result_str = 'recall = %0.4f \n' % (float(correct_predictions)/total_predictions)
     print(result_str)
 
 '''
 Sample execution: 
-python exp-referit/exp_test_coco_cls.py $GPU_ID --full --multiple --simple
---full: Full Images  vs --crops: Bounding Box Crops
+python coco/exp_test_coco_cls.py $GPU_ID --multiple --simple
 --multiple: Mutliple images per batch vs --single: Singe image per batch
 --concat: Concatenated labels vs --simple: Simple labels
 '''
@@ -394,8 +312,6 @@ DESCRIPTION = """Performance evaluation suite for cls_crop model."""
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument('GPU_ID', help='GPU_ID; if single-GPU, enter 0.')
-    parser.add_argument('--crops', dest='crops', action='store_true')
-    parser.add_argument('--full', dest='crops', action='store_false')
     parser.add_argument('--multiple', dest='multicrop', action='store_true')
     parser.add_argument('--single', dest='multicrop', action='store_false')
     parser.add_argument('--concat', dest='concat', action='store_true')

@@ -44,7 +44,7 @@ F = 1
 
 query_dict = json.load(open(query_file))   # e.g.: "38685_1":["sky"]                                          #             "7023_5","7023_2","7023_4"]
 imsize_dict = json.load(open(imsize_file)) #"7023.jpg":[480,360]
-imcrop_list = query_dict.keys()
+imcrop_list = list(query_dict.keys())
 
 ################################################################################
 # Load vocabulary

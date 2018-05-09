@@ -329,7 +329,7 @@ def main(args):
         print(correct_predictions/total_predictions)
             
     print('Final results on the whole test set')
-    result_str = 'recall = %f\n'.format(float(correct_predictions)/total_predictions)
+    result_str = 'recall = %0.4f \n' % (float(correct_predictions)/total_predictions)
     print(result_str)
 
 '''
