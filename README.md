@@ -39,7 +39,7 @@ A graphic of the architecture is below:
 8. Train the caption validation model using one of the following commands:  
     * To train with learned word embeddings: `python train_cls.py $GPU_ID`
     * To train with GloVe embeddings: `python train_cls_glove.py $GPU_ID`
-See the top of each training script for details on the other command line arguments needed.
+    * See the top of each training script for details on the other command line arguments needed.
 
 
 ### Evaluation
