@@ -12,7 +12,7 @@ This repository contains the code for the Spring 2018-COS 598B final project des
 ```
 
 A graphic of the architecture is below:
-![Model Architecture](https://github.com/ryan-mccaffrey/cos598-project/images/model-architecture.png)
+![Model Architecture](images/model-architecture.png)
 
 ## Installation
 1. Install Google TensorFlow (v1.0.0 or higher) following the instructions [here](https://www.tensorflow.org/install/).
