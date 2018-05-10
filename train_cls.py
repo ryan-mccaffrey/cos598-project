@@ -11,9 +11,11 @@ from util import data_reader
 from util import loss
 
 ''' 
+Traing with trainable word embedding.
+
 Sample execution:
-- COCO Dataset: python exp-referit/train_cls.py $GPU_ID cls_coco coco
-- ReferIt Dataset: python exp-referit/train_cls.py $GPU_ID cls_referit referit
+- COCO Dataset: python train_cls.py $GPU_ID cls_coco coco
+- ReferIt Dataset: python train_cls.py $GPU_ID cls_referit referit
 '''
 
 ################################################################################
@@ -26,7 +28,7 @@ N = 10
 input_H = 224
 input_W = 224
 num_vocab = 8803
-embed_dim = 50 #1000
+embed_dim = 1000
 lstm_dim = 1000
 mlp_hidden_dims = 500
 

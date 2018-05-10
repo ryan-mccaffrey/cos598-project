@@ -11,9 +11,11 @@ from util import data_reader
 from util import loss
 
 ''' 
+Traing with pretrained GloVe word embedding.
+
 Sample execution:
-- COCO Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_coco_glove_plus coco
-- ReferIt Dataset: python exp-referit/train_cls_glove.py $GPU_ID cls_referit_glove referit
+- COCO Dataset: python train_cls_glove.py $GPU_ID cls_coco_glove_plus coco
+- ReferIt Dataset: python train_cls_glove.py $GPU_ID cls_referit_glove referit
 '''
 
 ################################################################################
