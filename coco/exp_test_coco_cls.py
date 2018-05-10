@@ -26,8 +26,9 @@ image_dir = './coco/images/'
 query_file = './coco/annotations/instances_val2017.json'
 caption_file = './coco/annotations/captions_val2017.json'
 
-# TODO: Change model name for coco
-pretrained_model = './exp-referit/tfmodel/cls_coco_glove_plus_40000.tfmodel' #'./exp-referit/tfmodel/cls_referit_glove_18000.tfmodel'
+# Decomment the appropriate model
+pretrained_model = './exp-referit/tfmodel/cls_coco_glove_plus_40000.tfmodel' 
+#pretrained_model ='./exp-referit/tfmodel/cls_referit_glove_18000.tfmodel'
 
 # Model Params
 T = 20
