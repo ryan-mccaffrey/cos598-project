@@ -85,7 +85,6 @@ elif sys.argv[3] == 'referit':
     N = 50
 else:
     sys.exit("Invalid dataset chosen (argument 3).")
-print("Model:", data_prefix)
 
 # Snapshot Params
 #snapshot = max_iter+2
@@ -93,6 +92,12 @@ snapshot_file = './exp-referit/tfmodel/'+sys.argv[2]+'_%d.tfmodel'
 
 # 5 epochs per batch
 max_iter = 20000
+
+print()
+print("Model:", sys.argv[2])
+print("Vocabulary:", filename)
+print("Iterations:", max_iter)
+print()
 
 ################################################################################
 # The model
