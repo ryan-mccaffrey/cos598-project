@@ -22,7 +22,7 @@ Sample execution:
 # Load GloVe embedding
 ################################################################################
 
-filename = './exp-referit/data/glove.6B.50d.txt'
+filename = './exp-referit/data/glove.6B.300d.txt'
 def loadGloVe(filename):
     vocab = []
     embd = []
@@ -91,7 +91,7 @@ else:
 snapshot_file = './exp-referit/tfmodel/'+sys.argv[2]+'_%d.tfmodel'
 
 # 5 epochs per batch
-max_iter = 20000
+max_iter = 40000
 
 print()
 print("Model:", sys.argv[2])
