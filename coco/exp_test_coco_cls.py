@@ -128,8 +128,6 @@ def main(args):
     coco_captions = COCO(caption_file)
     imgid_list = coco.getImgIds()
     catid_list = coco.getCatIds()
-    all_categories = [cat['name'] for cat in coco.loadCats(catid_list)]
-    print(all_categories, len(all_categories)); exit()
 
     ################################################################################
     # Load testing data
@@ -182,11 +180,16 @@ def main(args):
         elif args.classes:
             img_catids = coco.getCatIds(imgIds=img_id)
             img_cat_names = [cat['name'] for cat in coco.loadCats(img_catids)]
-            for category in all_categories:
-                if category in img_cat_names: 
-                    testing_samples_pos.append((img_id, category, 1))
-                else: 
-                    testing_samples_neg.append((img_id, category, 0))
+            for category in img_cat_names:
+                testing_samples_pos.append((img_id, category, 1))
+
+                # form one negative example by choosing random category that
+                # img is not in
+                false_catid = img_catids[0]
+                while false_catid in img_catids: 
+                    false_catid = catid_list[randint(0, len(catid_list)-1)]
+                false_cat_name = coco.loadCats(false_catid)[0]['name']
+                testing_samples_neg.append((img_id, false_cat_name, 0))
 
         else:
             for caption in captions:
