@@ -212,6 +212,7 @@ decay = 0.99
 for n_iter in range(max_iter):
     # Read one batch
     batch = reader.read_batch()
+    if batch is None: continue
     text_seq_val = batch['text_seq_batch']
     im_val = batch['imcrop_batch'].astype(np.float32) - segmodel.vgg_net.channel_mean
     label_val = batch['label_batch'].astype(np.float32).reshape(N,1)

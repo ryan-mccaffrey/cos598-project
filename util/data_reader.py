@@ -59,9 +59,11 @@ class DataReader:
         print('data reader: epoch = %d, batch = %d / %d' % (self.n_epoch, self.n_batch, self.num_batch))
 
         # Get a batch from the prefetching queue
-        if self.prefetch_queue.empty():
-            print('data reader: waiting for file input (IO is slow)...')
-        batch = self.prefetch_queue.get(block=True)
         self.n_batch = (self.n_batch + 1) % self.num_batch
         self.n_epoch += (self.n_batch == 0)
+        if self.prefetch_queue.empty():
+            # time out when slow IO
+            print('data reader: waiting for file input (IO is slow)...')
+            return None
+        batch = self.prefetch_queue.get(block=True)
         return batch
