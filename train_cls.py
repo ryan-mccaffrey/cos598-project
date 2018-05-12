@@ -47,7 +47,7 @@ lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
 
-fix_convnet = False #True
+fix_convnet = True #False
 vgg_dropout = False
 mlp_dropout = False
 vgg_lr_mult = 1.

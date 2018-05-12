@@ -14,7 +14,7 @@ from util import loss
 Traing with pretrained GloVe word embedding.
 
 Sample execution:
-- COCO Dataset: python train_cls_glove.py $GPU_ID cls_coco_glove_plus coco
+- COCO Dataset: python train_cls_glove.py $GPU_ID cls_coco_glove_plus_plus coco
 - ReferIt Dataset: python train_cls_glove.py $GPU_ID cls_referit_glove referit
 '''
 
@@ -69,7 +69,7 @@ lr_decay_rate = 0.1
 weight_decay = 0.0005
 momentum = 0.9
 
-fix_convnet = False
+fix_convnet = True #False
 vgg_dropout = False
 mlp_dropout = False
 vgg_lr_mult = 1.

@@ -309,7 +309,7 @@ def main(args):
 
 '''
 Sample execution: 
-python coco/exp_test_coco_cls.py $GPU_ID --multiple
+python coco/test_coco_cls.py $GPU_ID --multiple
 --multiple: Mutliple images per batch, else: Singe image per batch.
 --concat: Concatenated captions, else: Simple captions.
 --classes: Object classes as captions, else: Normal image captions.
